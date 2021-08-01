@@ -26,6 +26,8 @@
     let controller1, controller2;
     let controllerGrip1, controllerGrip2;
 
+    let grabpos1, grabpos2;
+
     let raycaster;
 
     const intersected = [];
@@ -175,41 +177,59 @@
 
     }
 
+    // function onSelectStart(event) {
+
+    //   const controller = event.target;
+
+    //   const intersections = getIntersections(controller);
+
+    //   if (intersections.length > 0) {
+
+    //     const intersection = intersections[0];
+
+    //     const object = intersection.object;
+    //     object.material.emissive.b = 1;
+    //     controller.attach(object);
+
+    //     controller.userData.selected = object;
+
+    //   }
+
+    // }
+
+    // function onSelectEnd(event) {
+
+    //   const controller = event.target;
+
+    //   if (controller.userData.selected !== undefined) {
+
+    //     const object = controller.userData.selected;
+    //     object.material.emissive.b = 0;
+    //     group.attach(object);
+
+    //     controller.userData.selected = undefined;
+
+    //   }
+
+
+    // }
+
     function onSelectStart(event) {
-
       const controller = event.target;
-
-      const intersections = getIntersections(controller);
-
-      if (intersections.length > 0) {
-
-        const intersection = intersections[0];
-
-        const object = intersection.object;
-        object.material.emissive.b = 1;
-        controller.attach(object);
-
-        controller.userData.selected = object;
-
+      if (controller == controller1) {
+        grabpos1 = controller1.position.clone()
+      } else {
+        grabpos2 = controller2.position.clone()
       }
-
     }
 
     function onSelectEnd(event) {
-
       const controller = event.target;
-
-      if (controller.userData.selected !== undefined) {
-
-        const object = controller.userData.selected;
-        object.material.emissive.b = 0;
-        group.attach(object);
-
-        controller.userData.selected = undefined;
-
+      if (controller == controller1) {
+        grabpos1 = undefined;
+      } else {
+        grabpos2 = undefined;
       }
-
-
     }
 
     function getIntersections(controller) {
@@ -270,6 +290,14 @@
     }
 
     function render() {
+      if (grabpos1) {
+        group.position.add(controller1.position).sub(grabpos1)
+        grabpos1 = controller1.position.clone()
+      }
+      if (grabpos2) {
+        group.position.add(controller2.position).sub(grabpos2)
+        grabpos2 = controller2.position.clone()
+      }
 
       cleanIntersected();
 
@@ -279,7 +307,7 @@
       renderer.render(scene, camera);
 
     }
-
+    console.log(scene)
   </script>
 </body>
 
