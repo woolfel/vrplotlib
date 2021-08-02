@@ -41,8 +41,7 @@
     let rotpoint;
 
 
-    const config = { moveSpeed: 1, moveScale: true }
-    const moveSpeeds = [1, 4]
+    const config = { moveScale: true }
     let prevButtons = { left: {}, right: {} }
 
     init();
@@ -321,24 +320,25 @@
         if (config.moveScale) {
 
           const scalar = newDir.length() / prevDir.length()
-          const scale = new THREE.Vector3(scalar, scalar, scalar)
           const mat = new THREE.Matrix4()
           mat.makeScale(scalar, scalar, scalar)
           const offset = controllerRight.position.clone().sub(world.position)
 
+          // scale AROUND SCENE ORIGIN and correct to around controller
           world.applyMatrix4(mat)
           world.position.sub(controllerRight.position.clone().multiplyScalar(scalar - 1))
 
+          // translate, rotate, translate
           world.position.add(offset)
           world.applyQuaternion(angle)
           world.position.sub(offset.applyQuaternion(angle))
 
+          // move
           world.position.add(controllerRight.position).sub(grabposRight)
         } else {
 
           const prevMidpoint = prevDir.clone().multiplyScalar(0.5).add(grabposRight)
           const midpoint = newDir.clone().multiplyScalar(0.5).add(controllerRight.position)
-
 
           // rotate world around controller midpoint
           const oldPosition = world.position.clone()
@@ -347,22 +347,17 @@
           world.applyQuaternion(angle)
           world.position.sub(offset.applyQuaternion(angle))
 
-          world.position.add(midpoint.sub(prevMidpoint).multiplyScalar(config.moveSpeed))
+          world.position.add(midpoint).sub(prevMidpoint)
         }
       } else if (buttons.right[4]?.pressed) {
-        const delta = controllerRight.position.clone().sub(grabposRight).multiplyScalar(config.moveSpeed)
+        const delta = controllerRight.position.clone().sub(grabposRight)
         world.position.add(delta)
       } else if (buttons.left[4]?.pressed) {
-        const delta = controllerLeft.position.clone().sub(grabposLeft).multiplyScalar(config.moveSpeed)
+        const delta = controllerLeft.position.clone().sub(grabposLeft)
         world.position.add(delta)
       }
       grabposLeft = controllerLeft.position.clone()
       grabposRight = controllerRight.position.clone()
-
-      if (buttons.right[5]?.pressed && !prevButtons.right[5]?.pressed) {
-        console.log("toggling move speed")
-        config.moveSpeed = moveSpeeds[(moveSpeeds.indexOf(config.moveSpeed) + 1) % moveSpeeds.length]
-      }
 
       cleanIntersected();
 
