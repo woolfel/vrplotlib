@@ -14,7 +14,10 @@
     <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> vr - dragging
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/onnxjs/dist/onnx.min.js"></script>
+
   <script type="module">
+
 
     import * as THREE from './three.js/build/three.module.js';
     import { OrbitControls } from './three.js/examples/jsm/controls/OrbitControls.js';
@@ -23,10 +26,10 @@
 
     let container;
     let camera, scene, renderer;
-    let controller1, controller2;
-    let controllerGrip1, controllerGrip2;
+    let controllerLeft, controllerRight;
+    let controllerGripLeft, controllerGripRight;
 
-    let grabpos1, grabpos2;
+    let grabposLeft, grabposRight;
 
     let raycaster;
 
@@ -38,7 +41,7 @@
     let rotpoint;
 
 
-    const config = { moveSpeed: 1 }
+    const config = { moveSpeed: 1, moveScale: true }
     const moveSpeeds = [1, 4]
     let prevButtons = { left: {}, right: {} }
 
@@ -59,7 +62,7 @@
       scene.add(world);
       scene.background = new THREE.Color(0x808080);
 
-      camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 10);
+      camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
       camera.position.set(0, 1.6, 3);
 
       controls = new OrbitControls(camera, container);
@@ -148,26 +151,31 @@
       document.body.appendChild(VRButton.createButton(renderer));
 
       // controllers
+      const contone = renderer.xr.getController(0);
+      const conttwo = renderer.xr.getController(1);
+      const gripone = renderer.xr.getControllerGrip(0);
+      const griptwo = renderer.xr.getControllerGrip(1);
+      // @TODO: make sure controller 0 is actually left
+      console.log(contone)
+      controllerLeft = contone
+      controllerLeft.addEventListener('selectstart', onSelectStart);
+      controllerLeft.addEventListener('selectend', onSelectEnd);
+      scene.add(controllerLeft);
 
-      controller1 = renderer.xr.getController(0);
-      controller1.addEventListener('selectstart', onSelectStart);
-      controller1.addEventListener('selectend', onSelectEnd);
-      scene.add(controller1);
-
-      controller2 = renderer.xr.getController(1);
-      controller2.addEventListener('selectstart', onSelectStart);
-      controller2.addEventListener('selectend', onSelectEnd);
-      scene.add(controller2);
+      controllerRight = conttwo
+      controllerRight.addEventListener('selectstart', onSelectStart);
+      controllerRight.addEventListener('selectend', onSelectEnd);
+      scene.add(controllerRight);
 
       const controllerModelFactory = new XRControllerModelFactory();
 
-      controllerGrip1 = renderer.xr.getControllerGrip(0);
-      controllerGrip1.add(controllerModelFactory.createControllerModel(controllerGrip1));
-      scene.add(controllerGrip1);
+      controllerGripLeft = gripone
+      controllerGripLeft.add(controllerModelFactory.createControllerModel(controllerGripLeft));
+      scene.add(controllerGripLeft);
 
-      controllerGrip2 = renderer.xr.getControllerGrip(1);
-      controllerGrip2.add(controllerModelFactory.createControllerModel(controllerGrip2));
-      scene.add(controllerGrip2);
+      controllerGripRight = griptwo
+      controllerGripRight.add(controllerModelFactory.createControllerModel(controllerGripRight));
+      scene.add(controllerGripRight);
 
       //
 
@@ -177,8 +185,8 @@
       line.name = 'line';
       line.scale.z = 5;
 
-      controller1.add(line.clone());
-      controller2.add(line.clone());
+      controllerLeft.add(line.clone());
+      controllerRight.add(line.clone());
 
       raycaster = new THREE.Raycaster();
 
@@ -291,7 +299,6 @@
 
     function render() {
       const session = renderer.xr.getSession();
-      let onepressed = false
       let buttons = { left: [], right: [] }
       let axes = { left: [], right: [] }
       if (session && session.inputSources) {  //only if we are in a webXR session
@@ -301,33 +308,56 @@
         }
       }
 
+      rotpoint.position.sub(rotpoint.position).add(world.position)
+
       // gorn+tiltbrush movement
       if (buttons.right[4]?.pressed && buttons.left[4]?.pressed) {
-        const prevDir = grabpos1.clone().sub(grabpos2)
-        const prevMidpoint = prevDir.clone().multiplyScalar(0.5).add(grabpos2)
-        const newDir = controller1.position.clone().sub(controller2.position)
-        const midpoint = newDir.clone().multiplyScalar(0.5).add(controller2.position)
+        const prevDir = grabposLeft.clone().sub(grabposRight)
+        const newDir = controllerLeft.position.clone().sub(controllerRight.position)
 
         const angle = new THREE.Quaternion();
-        angle.setFromUnitVectors(prevDir.setY(0).normalize(), newDir.setY(0).normalize())
+        angle.setFromUnitVectors(prevDir.clone().setY(0).normalize(), newDir.clone().setY(0).normalize())
 
-        // rotate world around controller midpoint
-        const oldPosition = world.position.clone()
-        const offset = midpoint.clone().sub(oldPosition)
-        world.position.add(offset)
-        world.applyQuaternion(angle)
-        world.position.sub(offset.applyQuaternion(angle))
+        if (config.moveScale) {
 
-        world.position.add(midpoint.sub(prevMidpoint).multiplyScalar(config.moveSpeed))
+          const scalar = newDir.length() / prevDir.length()
+          const scale = new THREE.Vector3(scalar, scalar, scalar)
+          const mat = new THREE.Matrix4()
+          mat.makeScale(scalar, scalar, scalar)
+          const offset = controllerRight.position.clone().sub(world.position)
+
+          world.applyMatrix4(mat)
+          world.position.sub(controllerRight.position.clone().multiplyScalar(scalar - 1))
+
+          world.position.add(offset)
+          world.applyQuaternion(angle)
+          world.position.sub(offset.applyQuaternion(angle))
+
+          world.position.add(controllerRight.position).sub(grabposRight)
+        } else {
+
+          const prevMidpoint = prevDir.clone().multiplyScalar(0.5).add(grabposRight)
+          const midpoint = newDir.clone().multiplyScalar(0.5).add(controllerRight.position)
+
+
+          // rotate world around controller midpoint
+          const oldPosition = world.position.clone()
+          const offset = midpoint.clone().sub(oldPosition)
+          world.position.add(offset)
+          world.applyQuaternion(angle)
+          world.position.sub(offset.applyQuaternion(angle))
+
+          world.position.add(midpoint.sub(prevMidpoint).multiplyScalar(config.moveSpeed))
+        }
       } else if (buttons.right[4]?.pressed) {
-        const delta = controller2.position.clone().sub(grabpos2).multiplyScalar(config.moveSpeed)
+        const delta = controllerRight.position.clone().sub(grabposRight).multiplyScalar(config.moveSpeed)
         world.position.add(delta)
       } else if (buttons.left[4]?.pressed) {
-        const delta = controller1.position.clone().sub(grabpos1).multiplyScalar(config.moveSpeed)
+        const delta = controllerLeft.position.clone().sub(grabposLeft).multiplyScalar(config.moveSpeed)
         world.position.add(delta)
       }
-      grabpos1 = controller1.position.clone()
-      grabpos2 = controller2.position.clone()
+      grabposLeft = controllerLeft.position.clone()
+      grabposRight = controllerRight.position.clone()
 
       if (buttons.right[5]?.pressed && !prevButtons.right[5]?.pressed) {
         console.log("toggling move speed")
@@ -336,8 +366,8 @@
 
       cleanIntersected();
 
-      intersectObjects(controller1);
-      intersectObjects(controller2);
+      intersectObjects(controllerLeft);
+      intersectObjects(controllerRight);
 
       renderer.render(scene, camera);
       prevButtons = JSON.parse(JSON.stringify(buttons))
