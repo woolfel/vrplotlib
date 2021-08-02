@@ -18,7 +18,7 @@
 
     import * as THREE from './three.js/build/three.module.js';
     import { OrbitControls } from './three.js/examples/jsm/controls/OrbitControls.js';
-    import { VRButton } from './three.js/examples/jsm/webxr/VRButton.js';
+    import { VRButton } from './VRAuto.js';
     import { XRControllerModelFactory } from './three.js/examples/jsm/webxr/XRControllerModelFactory.js';
 
     let container;
@@ -33,10 +33,21 @@
     const intersected = [];
     const tempMatrix = new THREE.Matrix4();
 
-    let controls, group;
+    let controls, world, group;
+
+    let rotpoint;
+
+
+    const config = { moveSpeed: 1 }
+    const moveSpeeds = [1, 4]
+    let prevButtons = { left: {}, right: {} }
 
     init();
     animate();
+
+    window.addEventListener('vrdisplayactivate', function () {
+      console.log("vrdisplayactivate")
+    });
 
     function init() {
 
@@ -44,6 +55,8 @@
       document.body.appendChild(container);
 
       scene = new THREE.Scene();
+      world = new THREE.Group();
+      scene.add(world);
       scene.background = new THREE.Color(0x808080);
 
       camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 10);
@@ -62,9 +75,9 @@
       const floor = new THREE.Mesh(floorGeometry, floorMaterial);
       floor.rotation.x = - Math.PI / 2;
       floor.receiveShadow = true;
-      scene.add(floor);
+      world.add(floor);
 
-      scene.add(new THREE.HemisphereLight(0x808080, 0x606060));
+      world.add(new THREE.HemisphereLight(0x808080, 0x606060));
 
       const light = new THREE.DirectionalLight(0xffffff);
       light.position.set(0, 6, 0);
@@ -74,10 +87,17 @@
       light.shadow.camera.right = 2;
       light.shadow.camera.left = - 2;
       light.shadow.mapSize.set(4096, 4096);
-      scene.add(light);
+      world.add(light);
 
       group = new THREE.Group();
-      scene.add(group);
+      world.add(group);
+
+      rotpoint = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        roughness: 0.7,
+        metalness: 0.0
+      }));
+      scene.add(rotpoint)
 
       const geometries = [
         new THREE.BoxGeometry(0.2, 0.2, 0.2),
@@ -163,7 +183,6 @@
       raycaster = new THREE.Raycaster();
 
       //
-
       window.addEventListener('resize', onWindowResize);
 
     }
@@ -177,59 +196,40 @@
 
     }
 
-    // function onSelectStart(event) {
-
-    //   const controller = event.target;
-
-    //   const intersections = getIntersections(controller);
-
-    //   if (intersections.length > 0) {
-
-    //     const intersection = intersections[0];
-
-    //     const object = intersection.object;
-    //     object.material.emissive.b = 1;
-    //     controller.attach(object);
-
-    //     controller.userData.selected = object;
-
-    //   }
-
-    // }
-
-    // function onSelectEnd(event) {
-
-    //   const controller = event.target;
-
-    //   if (controller.userData.selected !== undefined) {
-
-    //     const object = controller.userData.selected;
-    //     object.material.emissive.b = 0;
-    //     group.attach(object);
-
-    //     controller.userData.selected = undefined;
-
-    //   }
-
-
-    // }
-
     function onSelectStart(event) {
+
       const controller = event.target;
-      if (controller == controller1) {
-        grabpos1 = controller1.position.clone()
-      } else {
-        grabpos2 = controller2.position.clone()
+
+      const intersections = getIntersections(controller);
+
+      if (intersections.length > 0) {
+
+        const intersection = intersections[0];
+        const object = intersection.object;
+        object.material.emissive.b = 1;
+        controller.attach(object);
+
+        controller.userData.selected = object;
+
       }
+
     }
 
     function onSelectEnd(event) {
+
       const controller = event.target;
-      if (controller == controller1) {
-        grabpos1 = undefined;
-      } else {
-        grabpos2 = undefined;
+
+      if (controller.userData.selected !== undefined) {
+
+        const object = controller.userData.selected;
+        object.material.emissive.b = 0;
+        group.attach(object);
+
+        controller.userData.selected = undefined;
+
       }
+
+
     }
 
     function getIntersections(controller) {
@@ -290,13 +290,48 @@
     }
 
     function render() {
-      if (grabpos1) {
-        group.position.add(controller1.position).sub(grabpos1)
-        grabpos1 = controller1.position.clone()
+      const session = renderer.xr.getSession();
+      let onepressed = false
+      let buttons = { left: [], right: [] }
+      let axes = { left: [], right: [] }
+      if (session && session.inputSources) {  //only if we are in a webXR session
+        for (const sourceXR of session.inputSources) {
+          buttons[sourceXR.handedness] = sourceXR.gamepad.buttons
+          axes[sourceXR.handedness] = sourceXR.gamepad.axes
+        }
       }
-      if (grabpos2) {
-        group.position.add(controller2.position).sub(grabpos2)
-        grabpos2 = controller2.position.clone()
+
+      // gorn+tiltbrush movement
+      if (buttons.right[4]?.pressed && buttons.left[4]?.pressed) {
+        const prevDir = grabpos1.clone().sub(grabpos2)
+        const prevMidpoint = prevDir.clone().multiplyScalar(0.5).add(grabpos2)
+        const newDir = controller1.position.clone().sub(controller2.position)
+        const midpoint = newDir.clone().multiplyScalar(0.5).add(controller2.position)
+
+        const angle = new THREE.Quaternion();
+        angle.setFromUnitVectors(prevDir.setY(0).normalize(), newDir.setY(0).normalize())
+
+        // rotate world around controller midpoint
+        const oldPosition = world.position.clone()
+        const offset = midpoint.clone().sub(oldPosition)
+        world.position.add(offset)
+        world.applyQuaternion(angle)
+        world.position.sub(offset.applyQuaternion(angle))
+
+        world.position.add(midpoint.sub(prevMidpoint).multiplyScalar(config.moveSpeed))
+      } else if (buttons.right[4]?.pressed) {
+        const delta = controller2.position.clone().sub(grabpos2).multiplyScalar(config.moveSpeed)
+        world.position.add(delta)
+      } else if (buttons.left[4]?.pressed) {
+        const delta = controller1.position.clone().sub(grabpos1).multiplyScalar(config.moveSpeed)
+        world.position.add(delta)
+      }
+      grabpos1 = controller1.position.clone()
+      grabpos2 = controller2.position.clone()
+
+      if (buttons.right[5]?.pressed && !prevButtons.right[5]?.pressed) {
+        console.log("toggling move speed")
+        config.moveSpeed = moveSpeeds[(moveSpeeds.indexOf(config.moveSpeed) + 1) % moveSpeeds.length]
       }
 
       cleanIntersected();
@@ -305,9 +340,8 @@
       intersectObjects(controller2);
 
       renderer.render(scene, camera);
-
+      prevButtons = JSON.parse(JSON.stringify(buttons))
     }
-    console.log(scene)
   </script>
 </body>
 
