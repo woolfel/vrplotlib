@@ -9,7 +9,7 @@
 </head>
 
 <body>
-
+  <canvas style="display:none" id="img-canvas"></canvas>
   <div id="info">
     <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> vr - dragging
   </div>
@@ -17,6 +17,10 @@
   <script src="https://cdn.jsdelivr.net/npm/onnxjs/dist/onnx.min.js"></script>
 
   <script type="module">
+
+    const imageCanvas = document.getElementById("img-canvas")
+    const imageCanvasCtx = imageCanvas.getContext("2d")
+
 
     import * as THREE from './three.js/build/three.module.js';
     import { OrbitControls } from './three.js/examples/jsm/controls/OrbitControls.js';
@@ -50,6 +54,65 @@
 
     ///////////////////////////////////////////////////////////////////////////////
     // funcs
+    function jpegToTensor(url, callback) {
+
+      const loader = new THREE.ImageLoader();
+
+      // load a image resource
+      loader.load(
+        // resource URL
+        url,
+        (image) => {
+          imageCanvas.width = image.width
+          imageCanvas.height = image.height
+          imageCanvasCtx.drawImage(image, 0, 0)
+          const imageData = imageCanvasCtx.getImageData(0, 0, imageCanvas.width, imageCanvas.height)
+          console.log(imageData.data)
+          // const floats = new Float32Array(imageData.data)
+          const unclamped = new Uint8Array(imageData.data)
+          const tensor = new onnx.Tensor(unclamped, 'uint8', [1, 4, imageData.width, imageData.height])
+          callback(tensor)
+        })
+    }
+    jpegToTensor('./imagenet/n01440764_tench.JPEG', (tensor) => {
+      console.log(tensor)
+    })
+
+
+    function tensorImagePlane(tensor) {
+      if (tensor.dims.length !== 4) {
+        throw new Error(`image tensor needs 4 dims`)
+      }
+      const hasA = tensor.dims[1] === 4
+      const texture = new THREE.DataTexture(tensor.data, tensor.dims[2], tensor.dims[3], hasA ? THREE.RGBAFormat : THREE.RGBFormat);
+      const plane = doubleSidedPlane(texture)
+      return plane
+    }
+    const sdftime = performance.now()
+    jpegToTensor("./imagenet/n01514859_hen.JPEG", (tensor) => {
+      console.log(tensor.data)
+      console.log("HAVETENSOR")
+      const object = tensorImagePlane(tensor)
+      world.add(object)
+      object.position.add(new THREE.Vector3(0, 0, 0))
+      console.log(`load took ${performance.now() - sdftime}`)
+
+    })
+
+    function doubleSidedPlane(texture) {
+      const material = new THREE.MeshBasicMaterial({
+        map: texture
+      });
+
+      // make one visible from front and one from back
+      const object = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material)
+      const object2 = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material)
+      const group = new THREE.Group()
+      group.add(object)
+      group.add(object2)
+      object2.rotateY(Math.PI)
+      return group
+    }
 
     function imagePlane(url, callback) {
       const loader = new THREE.TextureLoader();
@@ -61,12 +124,9 @@
 
         // onLoad callback
         function (texture) {
-          // in this example we create the material when the texture is loaded
-          const material = new THREE.MeshBasicMaterial({
-            map: texture
-          });
-          const object = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material)
-          callback(object)
+          console.log("texture")
+          console.log(texture)
+          callback(doubleSidedPlane(texture))
         },
 
         // onProgress callback currently not supported
@@ -78,11 +138,9 @@
         }
       );
     }
-    const sdftime = performance.now()
     imagePlane("./imagenet/n09468604_valley.JPEG", (object) => {
       world.add(object)
       object.position.add(new THREE.Vector3(1, 1, 1))
-      console.log(`load took ${performance.now() - sdftime}`)
     })
 
     ///////////////////////////////////////////////////////////////////////////////
