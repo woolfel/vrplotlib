@@ -1,5 +1,7 @@
 /web/three.js/**
 web/three.js
+web/models/**
+web/imagenet/**
 
 /web/node_modules/**
 

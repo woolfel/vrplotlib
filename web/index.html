@@ -18,11 +18,14 @@
 
   <script type="module">
 
-
     import * as THREE from './three.js/build/three.module.js';
     import { OrbitControls } from './three.js/examples/jsm/controls/OrbitControls.js';
     import { VRButton } from './VRAuto.js';
     import { XRControllerModelFactory } from './three.js/examples/jsm/webxr/XRControllerModelFactory.js';
+
+    import { Resnetvis } from "./resnetvis.mjs"
+
+    let visualization;
 
     let container;
     let camera, scene, renderer;
@@ -44,7 +47,49 @@
     const config = { moveScale: true }
     let prevButtons = { left: {}, right: {} }
 
+
+    ///////////////////////////////////////////////////////////////////////////////
+    // funcs
+
+    function imagePlane(url, callback) {
+      const loader = new THREE.TextureLoader();
+
+      // load a resource
+      loader.load(
+        // resource URL
+        url,
+
+        // onLoad callback
+        function (texture) {
+          // in this example we create the material when the texture is loaded
+          const material = new THREE.MeshBasicMaterial({
+            map: texture
+          });
+          const object = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material)
+          callback(object)
+        },
+
+        // onProgress callback currently not supported
+        undefined,
+
+        // onError callback
+        function (err) {
+          console.error('An error happened.');
+        }
+      );
+    }
+    const sdftime = performance.now()
+    imagePlane("./imagenet/n09468604_valley.JPEG", (object) => {
+      world.add(object)
+      object.position.add(new THREE.Vector3(1, 1, 1))
+      console.log(`load took ${performance.now() - sdftime}`)
+    })
+
+    ///////////////////////////////////////////////////////////////////////////////
+
+
     init();
+    visualization = new Resnetvis(world);
     animate();
 
     window.addEventListener('vrdisplayactivate', function () {
@@ -61,6 +106,7 @@
       scene.add(world);
       scene.background = new THREE.Color(0x808080);
 
+      // this is flatscreen camera - xr makes camera with different settings
       camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
       camera.position.set(0, 1.6, 3);
 
@@ -94,12 +140,12 @@
       group = new THREE.Group();
       world.add(group);
 
-      rotpoint = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), new THREE.MeshStandardMaterial({
-        color: 0xffffff,
-        roughness: 0.7,
-        metalness: 0.0
-      }));
-      scene.add(rotpoint)
+      // rotpoint = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), new THREE.MeshStandardMaterial({
+      //   color: 0xffffff,
+      //   roughness: 0.7,
+      //   metalness: 0.0
+      // }));
+      // scene.add(rotpoint)
 
       const geometries = [
         new THREE.BoxGeometry(0.2, 0.2, 0.2),
@@ -307,7 +353,7 @@
         }
       }
 
-      rotpoint.position.sub(rotpoint.position).add(world.position)
+      // rotpoint.position.sub(rotpoint.position).add(world.position)
 
       // gorn+tiltbrush movement
       if (buttons.right[4]?.pressed && buttons.left[4]?.pressed) {
@@ -363,6 +409,11 @@
 
       intersectObjects(controllerLeft);
       intersectObjects(controllerRight);
+
+      const inputs = { controllerLeft, controllerRight, buttons, prevButtons }
+      if (visualization) {
+        visualization.update(inputs)
+      }
 
       renderer.render(scene, camera);
       prevButtons = JSON.parse(JSON.stringify(buttons))
