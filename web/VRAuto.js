@@ -1,12 +1,6 @@
 class VRButton {
 
-	static createButton(renderer, options) {
-
-		if (options) {
-
-			console.error('THREE.VRButton: The "options" parameter has been removed. Please set the reference space type via renderer.xr.setReferenceSpaceType() instead.');
-
-		}
+	static createButton(renderer, autostart) {
 
 		const button = document.createElement('button');
 
@@ -77,7 +71,7 @@ class VRButton {
 				}
 			}
 
-			Enter()
+			if (autostart) Enter()
 
 			button.onclick = function () {
 

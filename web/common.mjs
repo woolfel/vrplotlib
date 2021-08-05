@@ -52,6 +52,7 @@ export function doubleSidedPlane(texture) {
   // make one visible from front and one from back
   const object = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material)
   const object2 = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material)
+  object2.scale.x = -1
   const group = new THREE.Group()
   group.add(object)
   group.add(object2)
