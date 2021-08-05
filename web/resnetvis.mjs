@@ -6,6 +6,9 @@ export class Resnetvis {
     this.insz = [1, 3, 224, 224]
     const resnet = new onnx.InferenceSession();
     this.resnet = resnet
+
+
+
     resnet.loadModel("./models/resnet18-v1-7.onnx").then(async () => {
       this.loaded = true
       console.log(resnet)
@@ -27,11 +30,11 @@ export class Resnetvis {
     const outmap = await this.resnet.run([ot])
     const result = outmap.values().next().value
     console.log(`took ${performance.now() - stime}`)
-    return result.data
+    return result
   }
 
   async update() {
-    if (this.loaded && !this.stillRunning) {
+    if (false && this.loaded && !this.stillRunning) {
       this.stillRunning = true
       await this.inferArr(new Float32Array(this.insz.reduce((a, b) => a * b)).fill(1))
       this.stillRunning = false
