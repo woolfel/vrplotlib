@@ -26,7 +26,6 @@ export async function tensorTexture(tensor) {
     throw new Error(`image tensor needs 4 or 2 dims`)
   }
   const array = await toUint8Array(tensor)
-  console.log(array)
   let texture;
   if (tensor.shape.length === 3) {
     const hasA = tensor.shape[0] === 4
@@ -35,19 +34,20 @@ export async function tensorTexture(tensor) {
     const hasA = tensor.shape[1] === 4
     texture = new THREE.DataTexture(array, tensor.shape[2], tensor.shape[3], hasA ? THREE.RGBFormat : THREE.RGBFormat);
   }
-  console.log(texture)
   return texture
 }
 
-export async function tensorImagePlane(tensor) {
+export async function tensorImagePlane(tensor, opacity = 1) {
   const texture = await tensorTexture(tensor)
-  const plane = doubleSidedPlane(texture)
+  const plane = doubleSidedPlane(texture, opacity)
   return plane
 }
 
-export function doubleSidedPlane(texture) {
+export function doubleSidedPlane(texture, opacity = 1) {
   const material = new THREE.MeshBasicMaterial({
-    map: texture
+    map: texture,
+    opacity,
+    transparent: opacity !== 1,
   });
   // make one visible from front and one from back
   const object = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material)

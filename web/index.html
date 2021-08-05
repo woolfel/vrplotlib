@@ -79,17 +79,20 @@
       controls.target.set(0, 1.6, 0);
       controls.update();
 
-      const floorGeometry = new THREE.PlaneGeometry(16, 16);
-      const floorMaterial = new THREE.MeshStandardMaterial({
-        color: 0xeeeeee,
-        roughness: 1.0,
-        metalness: 0.0
-      });
-      const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-      floor.rotation.x = - Math.PI / 2;
-      floor.position.y -= 1
-      floor.receiveShadow = true;
-      world.add(floor);
+      const haveFloor = false
+      if (haveFloor) {
+        const floorGeometry = new THREE.PlaneGeometry(16, 16);
+        const floorMaterial = new THREE.MeshStandardMaterial({
+          color: 0xeeeeee,
+          roughness: 1.0,
+          metalness: 0.0
+        });
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.rotation.x = - Math.PI / 2;
+        floor.position.y -= 1
+        floor.receiveShadow = true;
+        world.add(floor);
+      }
 
       world.add(new THREE.HemisphereLight(0x808080, 0x606060));
 
@@ -114,7 +117,7 @@
       renderer.xr.enabled = true;
       container.appendChild(renderer.domElement);
 
-      document.body.appendChild(VRButton.createButton(renderer));
+      document.body.appendChild(VRButton.createButton(renderer, false));
 
       // controllers
       const contone = renderer.xr.getController(0);
@@ -173,6 +176,23 @@
       renderer.setAnimationLoop(render);
 
     }
+    let isAnimating = true
+    document.addEventListener("keydown", (event) => {
+      switch (event.key) {
+        case "c":
+          if (event.ctrlKey) {
+            if (isAnimating) {
+              isAnimating = false
+              renderer.setAnimationLoop(null)
+            } else {
+              isAnimating = true
+              renderer.setAnimationLoop(render)
+            }
+            event.preventDefault()
+          }
+          break
+      }
+    })
 
     function render() {
       const session = renderer.xr.getSession();
