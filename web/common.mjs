@@ -8,8 +8,6 @@ export async function imgUrlToTensor(url) {
   const result = await (new Promise((resolve) => {
     img.onload = () => {
       const tensor = tf.browser.fromPixels(img, 3)
-      console.log("IMAGE TENSOR")
-      tensor.data().then(console.log)
       const shaped = tensor.reshape([1, 3, 224, 224]).mul(tf.scalar(1 / 255))
       resolve(shaped)
     }
@@ -29,10 +27,10 @@ export async function tensorTexture(tensor) {
   let texture;
   if (tensor.shape.length === 3) {
     const hasA = tensor.shape[0] === 4
-    texture = new THREE.DataTexture(array, tensor.shape[1], tensor.shape[2], hasA ? THREE.RGBFormat : THREE.RGBFormat);
+    texture = new THREE.DataTexture(array, tensor.shape[1], tensor.shape[2], hasA ? THREE.RGBAFormat : THREE.RGBFormat);
   } else {
     const hasA = tensor.shape[1] === 4
-    texture = new THREE.DataTexture(array, tensor.shape[2], tensor.shape[3], hasA ? THREE.RGBFormat : THREE.RGBFormat);
+    texture = new THREE.DataTexture(array, tensor.shape[2], tensor.shape[3], hasA ? THREE.RGBAFormat : THREE.RGBFormat);
   }
   return texture
 }
@@ -52,6 +50,8 @@ export function doubleSidedPlane(texture, opacity = 1) {
   // make one visible from front and one from back
   const object = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material)
   const object2 = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material)
+  object2.rotation.z += Math.PI
+  object.rotation.z += Math.PI
   object2.scale.x = -1
   const group = new THREE.Group()
   group.add(object)

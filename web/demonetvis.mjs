@@ -14,7 +14,7 @@ export class Demonetvis {
     })
 
     const input = tf.input({ shape: [3, 224, 224] })
-    const convDefaults = { filters: 16, kernelSize: 3, strides: 1, activation: 'relu', dataFormat: 'channelsFirst', kernelInitializer: "glorotUniform" }
+    const convDefaults = { filters: 15, kernelSize: 3, strides: 1, activation: 'relu', dataFormat: 'channelsFirst', kernelInitializer: "glorotUniform", padding: "same" }
     const conv1 = tf.layers.conv2d({ ...convDefaults })
     const conv2 = tf.layers.conv2d({ ...convDefaults })
     const hidden = conv1.apply(input)
@@ -38,7 +38,6 @@ export class Demonetvis {
       this.world = world
       this.world.add(this.group)
 
-
       this.inputPlane.position.add(new THREE.Vector3(0, 0, -1))
       this.activationPlane1.position.add(new THREE.Vector3(0, 0, -0.5))
     })
@@ -50,16 +49,22 @@ export class Demonetvis {
   }
 
   async predict() {
+    const sstime = performance.now()
     const [act1, act2] = this.model.predict(this.tensorInput)
     this.tensorActivation1 = act1
     this.tensorActivation2 = act2
+    console.log(`predict teentsy took ${performance.now() - sstime}`)
   }
 
   async display() {
     const sstime = performance.now()
     const tensors = [this.tensorInput,
-    tf.reshape(tf.slice(this.tensorActivation1, [0, 0, 0, 0], [-1, 3, -1, -1]), [222, 222, 3]),
-    tf.slice(this.tensorActivation2, [0, 0, 0, 0], [-1, 3, -1, -1])]
+    // this.tensorActivation1,
+    // this.tensorActivation2
+    tf.split(this.tensorActivation1, 5, 1)[0],
+    tf.split(this.tensorActivation2, 5, 1)[0]
+    ]
+    console.log(tensors)
     const [i, a1, a2] = await Promise.all(tensors.map(tensorTexture))
     this.inputPlane.children[0].material.map = i
     this.inputPlane.children[0].material.needsUpdate = true

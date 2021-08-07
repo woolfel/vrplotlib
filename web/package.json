@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "@tensorflow/tfjs": "^3.8.0",
+    "@tensorflow/tfjs-backend-webgl": "^3.8.0",
+    "three": "^0.131.3"
+  }
+}

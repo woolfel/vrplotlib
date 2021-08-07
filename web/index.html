@@ -12,10 +12,11 @@
   <div id="info">
     <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> vr - dragging
   </div>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.0.1"> </script>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@1.0.0"> </script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"> </script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@latest"> </script>
 
   <script type="module">
+    const tfContext = tf.backend().gpgpu.gl
 
     import * as THREE from './three.js/build/three.module.js';
     import { OrbitControls } from './three.js/examples/jsm/controls/OrbitControls.js';
@@ -109,7 +110,10 @@
 
       //
 
-      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+      tf.setWebGLContext(2, renderer.getContext())
+      tf.setBackend('webgl')
+
       renderer.setPixelRatio(window.devicePixelRatio);
       renderer.setSize(window.innerWidth, window.innerHeight);
       renderer.outputEncoding = THREE.sRGBEncoding;
