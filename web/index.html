@@ -16,7 +16,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@latest"> </script>
 
   <script type="module">
-    const tfContext = tf.backend().gpgpu.gl
+    import * as tf from "@tensorflow/tfjs";
+    import { setWebGLContext } from "@tensorflow/tfjs-backend-webgl";
 
     import * as THREE from './three.js/build/three.module.js';
     import { OrbitControls } from './three.js/examples/jsm/controls/OrbitControls.js';
