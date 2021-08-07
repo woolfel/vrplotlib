@@ -1,4 +1,5 @@
-import * as THREE from './three.js/build/three.module.js';
+import * as THREE from 'three';
+import * as tf from "@tensorflow/tfjs";
 
 export async function imgUrlToTensor(url) {
   const img = document.createElement("img")

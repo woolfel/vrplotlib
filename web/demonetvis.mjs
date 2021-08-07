@@ -1,5 +1,6 @@
-import * as THREE from './three.js/build/three.module.js';
+import * as THREE from 'three';
 import { tensorTexture, tensorImagePlane, imgUrlToTensor } from "./common.mjs";
+import * as tf from "@tensorflow/tfjs";
 export class Demonetvis {
   constructor(world) {
     this.processing = false
@@ -7,7 +8,7 @@ export class Demonetvis {
     this.minDelay = 2
     this.lastFrameTime = -1000000000000
 
-    Promise.all(["n01440764_tench.JPEG", "n01443537_goldfish.JPEG", "n01484850_great_white_shark.JPEG", "n01491361_tiger_shark.JPEG", "n01494475_hammerhead.JPEG"].map(url => imgUrlToTensor("./imagenet/" + url))).then(images => {
+    Promise.all(["n01440764_tench-.jpeg", "n01443537_goldfish-.jpeg", "n01484850_great_white_shark-.jpeg", "n01491361_tiger_shark-.jpeg", "n01494475_hammerhead-.jpeg"].map(url => imgUrlToTensor("./imagenet/" + url))).then(images => {
       this.images = images
       this.imageIndex = 0
       console.log(this.images)

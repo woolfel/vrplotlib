@@ -1,4 +1,4 @@
-import * as THREE from './three.js/build/three.module.js';
+import * as THREE from 'three';
 import { imagePlane, tensorImagePlane } from "./common.mjs";
 
 export class Mobilenetvis {
