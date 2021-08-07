@@ -9,7 +9,8 @@ export async function imgUrlToTensor(url) {
   const result = await (new Promise((resolve) => {
     img.onload = () => {
       const tensor = tf.browser.fromPixels(img, 3)
-      const shaped = tensor.reshape([1, 3, 224, 224]).mul(tf.scalar(1 / 255))
+      console.log("IMG TENSOR DIMENSION", tensor.shape)
+      const shaped = tensor.transpose([2, 0, 1]).expandDims(0).mul(tf.scalar(1 / 255))
       resolve(shaped)
     }
   }))
@@ -24,12 +25,13 @@ export async function tensorTexture(tensor) {
   if (tensor.shape.length !== 4 && tensor.shape.length !== 3) {
     throw new Error(`image tensor needs 4 or 2 dims`)
   }
-  const array = await toUint8Array(tensor)
   let texture;
   if (tensor.shape.length === 3) {
+    const array = await toUint8Array(tf.transpose(tensor, [1, 2, 0]))
     const hasA = tensor.shape[0] === 4
     texture = new THREE.DataTexture(array, tensor.shape[1], tensor.shape[2], hasA ? THREE.RGBAFormat : THREE.RGBFormat);
   } else {
+    const array = await toUint8Array(tf.transpose(tf.squeeze(tensor), [1, 2, 0]))
     const hasA = tensor.shape[1] === 4
     texture = new THREE.DataTexture(array, tensor.shape[2], tensor.shape[3], hasA ? THREE.RGBAFormat : THREE.RGBFormat);
   }

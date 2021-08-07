@@ -42,6 +42,12 @@ export class Demonetvis {
       this.inputPlane.position.add(new THREE.Vector3(0, 0, -1))
       this.activationPlane1.position.add(new THREE.Vector3(0, 0, -0.5))
     })
+
+    const canvas2d = document.createElement('canvas')
+    canvas2d.width = 224
+    canvas2d.height = 224
+    document.body.appendChild(canvas2d)
+    this.ctx2d = canvas2d.getContext('2d')
   }
 
   async loadImageInput(url) {
@@ -57,6 +63,20 @@ export class Demonetvis {
     console.log(`predict teentsy took ${performance.now() - sstime}`)
   }
 
+  async display2d(tensor) {
+    const ntensor = tf.transpose(tf.squeeze(tf.concat([tf.mul(tensor, tf.scalar(255)), tf.fill([1, 1, 224, 224], 225, "float32")], 1)), [1, 2, 0])
+    console.log(ntensor)
+    const tensordata = await ntensor.data()
+    // const arr = new UInt8ClampedArray(224*224*4)
+    const arr = new Uint8ClampedArray(tensordata)
+    console.log(arr)
+    // for (let i = 0; i < tensordata.length; i++) {
+
+    // }
+    const imageData = new ImageData(arr, 224, 224)
+    this.ctx2d.putImageData(imageData, 0, 0)
+  }
+
   async display() {
     const sstime = performance.now()
     const tensors = [this.tensorInput,
@@ -65,6 +85,7 @@ export class Demonetvis {
     tf.split(this.tensorActivation1, 5, 1)[0],
     tf.split(this.tensorActivation2, 5, 1)[0]
     ]
+    await this.display2d(tensors[0])
     console.log(tensors)
     const [i, a1, a2] = await Promise.all(tensors.map(tensorTexture))
     this.inputPlane.children[0].material.map = i

@@ -1,5 +1,11 @@
-import * as tf from "@tensorflow/tfjs";
 import { setWebGLContext } from "@tensorflow/tfjs-backend-webgl";
+const canvas = document.createElement('canvas')
+document.body.appendChild(canvas)
+canvas.style.display = "none"
+const mygl = canvas.getContext('webgl2');
+setWebGLContext(2, mygl);
+import * as tf from "@tensorflow/tfjs";
+await tf.setBackend('webgl');
 
 import * as THREE from 'three';
 import { OrbitControls } from './OrbitControls.js';
@@ -9,6 +15,8 @@ import { XRControllerModelFactory } from './example-webxr/XRControllerModelFacto
 import { imagePlane } from "./common.mjs";
 
 import { Demonetvis } from "./demonetvis.mjs"
+
+
 
 let visualization;
 
