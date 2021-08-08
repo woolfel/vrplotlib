@@ -1,6 +1,25 @@
 import * as THREE from 'three';
 import * as tf from "@tensorflow/tfjs";
 
+let glContext, whichState, tfGlState, threeGlState;
+
+export function setGlContext(ctx) {
+  glContext = ctx
+}
+
+export function switchToThree() {
+  if (whichState == 'tf') {
+    whichState = 'three'
+  }
+}
+
+export function switchToTf() {
+  if (whichState == 'three') {
+    whichState = 'tf'
+  }
+}
+
+
 export async function imgUrlToTensor(url) {
   const img = document.createElement("img")
   img.width = 224
@@ -21,6 +40,12 @@ export async function toUint8Array(tensor) {
   return new Uint8Array(await tensor.mul(tf.scalar(255)).data())
 }
 
+export function tensorInternalTexture(tensor) {
+  const texData = tf.backend().texData.get(tensor.dataId)
+  const tex = texData.texture
+  return tex
+}
+
 export async function tensorTexture(tensor) {
   if (tensor.shape.length !== 4 && tensor.shape.length !== 3) {
     throw new Error(`image tensor needs 4 or 2 dims`)
@@ -37,6 +62,9 @@ export async function tensorTexture(tensor) {
   }
   return texture
 }
+// export function arrayTexture(arr, width, height) {
+//   return new THREE.DataTexture(array, width, height, RGBAFormat);
+// }
 
 export async function tensorImagePlane(tensor, opacity = 1) {
   const texture = await tensorTexture(tensor)

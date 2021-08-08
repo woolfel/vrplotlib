@@ -1,22 +1,14 @@
-import { setWebGLContext } from "@tensorflow/tfjs-backend-webgl";
-const canvas = document.createElement('canvas')
-document.body.appendChild(canvas)
-canvas.style.display = "none"
-const mygl = canvas.getContext('webgl2');
-setWebGLContext(2, mygl);
-import * as tf from "@tensorflow/tfjs";
-await tf.setBackend('webgl');
-
 import * as THREE from 'three';
 import { OrbitControls } from './OrbitControls.js';
 import { VRButton } from './VRAuto.js';
 import { XRControllerModelFactory } from './example-webxr/XRControllerModelFactory.mjs';
 
-import { imagePlane } from "./common.mjs";
+import { imagePlane, setGlContext } from "./common.mjs";
 
 import { Demonetvis } from "./demonetvis.mjs"
 
-
+import { setWebGLContext } from "@tensorflow/tfjs-backend-webgl";
+import * as tf from "@tensorflow/tfjs";
 
 let visualization;
 
@@ -36,23 +28,36 @@ let controls, world, group;
 
 let rotpoint;
 
+let glContext;
+
 const config = { moveScale: true }
 let prevButtons = { left: {}, right: {} }
 
-init();
+const tempfn = async () => {
 
-// imagePlane("./imagenet/n09468604_valley.JPEG", (object) => {
-//   world.add(object)
-//   object.position.add(new THREE.Vector3(1, 1, 1))
-// })
-visualization = new Demonetvis(world)
-animate();
+  await init();
+
+  // imagePlane("./imagenet/n09468604_valley.JPEG", (object) => {
+  //   world.add(object)
+  //   object.position.add(new THREE.Vector3(1, 1, 1))
+  // })
+  visualization = await Demonetvis.create(world)
+  animate();
+}
+tempfn()
 
 window.addEventListener('vrdisplayactivate', function () {
   console.log("vrdisplayactivate")
 });
 
-function init() {
+async function init() {
+
+  renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+  glContext = renderer.getContext()
+  setGlContext(glContext)
+  await tf.setBackend('cpu')
+  setWebGLContext(2, glContext);
+  await tf.setBackend('webgl');
 
   container = document.createElement('div');
   document.body.appendChild(container);
@@ -98,12 +103,6 @@ function init() {
   light.shadow.mapSize.set(4096, 4096);
   world.add(light);
 
-
-  //
-
-  renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-  // tf.setWebGLContext(2, renderer.getContext())
-  // tf.setBackend('webgl')
 
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
