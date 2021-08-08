@@ -1,19 +1,28 @@
 import * as THREE from 'three';
 import * as tf from "@tensorflow/tfjs";
 
-let glContext, whichState, tfGlState, threeGlState;
+let gl, whichState, tfGlState, threeGlState;
+
+const gpgpu = tf.backend().gpgpu
+console.log(gpgpu)
 
 export function setGlContext(ctx) {
-  glContext = ctx
+  gl = ctx
 }
 
-export function switchToThree() {
+export function tfMode() {
   if (whichState == 'tf') {
+    if (gpgpu.vertexAttrsAreBound) {
+      // @GLPROBLEM enable scissor
+      gl.useProgram(gpgpu.program);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gpgpu.indexBuffer);
+      gpgpu_util.bindVertexProgramAttributeStreams(gl, false, gpgpu.program, gpgpu.vertexBuffer);
+    }
     whichState = 'three'
   }
 }
 
-export function switchToTf() {
+export function threeMode() {
   if (whichState == 'three') {
     whichState = 'tf'
   }
@@ -46,25 +55,30 @@ export function tensorInternalTexture(tensor) {
   return tex
 }
 
-export async function tensorTexture(tensor) {
+export async function tensorTexture(tensor) { // @SWITCHY
   if (tensor.shape.length !== 4 && tensor.shape.length !== 3) {
     throw new Error(`image tensor needs 4 or 2 dims`)
   }
   let texture;
   if (tensor.shape.length === 3) {
     const array = await toUint8Array(tf.transpose(tensor, [1, 2, 0]))
+    threeMode()
     const hasA = tensor.shape[0] === 4
     texture = new THREE.DataTexture(array, tensor.shape[1], tensor.shape[2], hasA ? THREE.RGBAFormat : THREE.RGBFormat);
+    tfMode()
   } else {
     const array = await toUint8Array(tf.transpose(tf.squeeze(tensor), [1, 2, 0]))
+    threeMode()
     const hasA = tensor.shape[1] === 4
     texture = new THREE.DataTexture(array, tensor.shape[2], tensor.shape[3], hasA ? THREE.RGBAFormat : THREE.RGBFormat);
+    tfMode()
   }
   return texture
 }
-// export function arrayTexture(arr, width, height) {
-//   return new THREE.DataTexture(array, width, height, RGBAFormat);
-// }
+
+export function arrayTexture(arr, width, height) {
+  return new THREE.DataTexture(array, width, height, RGBAFormat);
+}
 
 export async function tensorImagePlane(tensor, opacity = 1) {
   const texture = await tensorTexture(tensor)

@@ -3,7 +3,7 @@ import { OrbitControls } from './OrbitControls.js';
 import { VRButton } from './VRAuto.js';
 import { XRControllerModelFactory } from './example-webxr/XRControllerModelFactory.mjs';
 
-import { imagePlane, setGlContext } from "./common.mjs";
+import { imagePlane, setGlContext, tfMode, threeMode } from "./common.mjs";
 
 import { Demonetvis } from "./demonetvis.mjs"
 
@@ -255,7 +255,8 @@ function render() {
   if (visualization) {
     visualization.update(inputs)
   }
+  threeMode()
   renderer.render(scene, camera);
+  tfMode()
   prevButtons = JSON.parse(JSON.stringify(buttons))
-
 }

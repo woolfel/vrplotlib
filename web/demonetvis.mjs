@@ -1,23 +1,21 @@
 import * as THREE from 'three';
-import { tensorTexture, tensorImagePlane, imgUrlToTensor, switchToTf, switchToThree, tensorInternalTexture } from "./common.mjs";
+import { tensorTexture, tensorImagePlane, imgUrlToTensor, tfMode, threeMode, tensorInternalTexture } from "./common.mjs";
 import * as tf from "@tensorflow/tfjs";
 export class Demonetvis {
-  constructor() {
-    console.error("use create instead")
-  }
   static async create(world, config) {
     const defaultconfig = { do2d: false }
-    this.config = { ...defaultconfig, config }
-    this.processing = false
+    const thiss = new Demonetvis()
+    thiss.config = { ...defaultconfig, config }
+    thiss.processing = false
 
-    this.minDelay = 2
-    this.lastFrameTime = -1000000000000
+    thiss.minDelay = 1
+    thiss.lastFrameTime = -1000000000000
 
-    const images = await Promise.all(["n01440764_tench-.jpeg", "n01443537_goldfish-.jpeg", "n01484850_great_white_shark-.jpeg", "n01491361_tiger_shark-.jpeg", "n01494475_hammerhead-.jpeg"].map(url => imgUrlToTensor("./imagenet/" + url)))
-    this.images = images
-    this.imageIndex = 0
-    console.log(this.images)
-    console.log(tensorInternalTexture(this.images[0]))
+    const images = await Promise.all(["n01440764_tench.jpeg", "n01443537_goldfish.jpeg", "n01484850_great_white_shark.jpeg", "n01491361_tiger_shark.jpeg", "n01494475_hammerhead.jpeg"].map(url => imgUrlToTensor("./imagenet/" + url)))
+    thiss.images = images
+    thiss.imageIndex = 0
+    console.log(thiss.images)
+    console.log(tensorInternalTexture(thiss.images[0]))
 
     const input = tf.input({ shape: [3, 224, 224] })
     const convDefaults = { filters: 15, kernelSize: 3, strides: 1, activation: 'relu', dataFormat: 'channelsFirst', kernelInitializer: "glorotUniform", padding: "same" }
@@ -25,35 +23,36 @@ export class Demonetvis {
     const conv2 = tf.layers.conv2d({ ...convDefaults })
     const hidden = conv1.apply(input)
     const output = conv2.apply(hidden)
-    this.model = tf.model({ inputs: input, outputs: [hidden, output] })
-    // this.model.summary()
+    thiss.model = tf.model({ inputs: input, outputs: [hidden, output] })
+    // thiss.model.summary()
 
-    this.tensorInput = tf.tensor(new Float32Array(3 * 224 * 224).fill(1), [1, 3, 224, 224])
-    this.tensorActivation1 = tf.tensor(new Float32Array(3 * 224 * 224).fill(1), [1, 3, 224, 224])
-    this.tensorActivation2 = tf.tensor(new Float32Array(3 * 224 * 224).fill(1), [1, 3, 224, 224])
-    const [a, b, c] = await Promise.all([tensorImagePlane(this.tensorInput),
-    tensorImagePlane(this.tensorActivation1, 0.6),
-    tensorImagePlane(this.tensorActivation2, 0.6)])
-    this.inputPlane = a
-    this.activationPlane1 = b
-    this.activationPlane2 = c
-    this.group = new THREE.Group()
-    this.group.add(this.inputPlane)
-    this.group.add(this.activationPlane1)
-    this.group.add(this.activationPlane2)
-    this.world = world
-    this.world.add(this.group)
+    thiss.tensorInput = tf.tensor(new Float32Array(3 * 224 * 224).fill(1), [1, 3, 224, 224])
+    thiss.tensorActivation1 = tf.tensor(new Float32Array(3 * 224 * 224).fill(1), [1, 3, 224, 224])
+    thiss.tensorActivation2 = tf.tensor(new Float32Array(3 * 224 * 224).fill(1), [1, 3, 224, 224])
+    const [a, b, c] = await Promise.all([tensorImagePlane(thiss.tensorInput),
+    tensorImagePlane(thiss.tensorActivation1, 0.6),
+    tensorImagePlane(thiss.tensorActivation2, 0.6)])
+    thiss.inputPlane = a
+    thiss.activationPlane1 = b
+    thiss.activationPlane2 = c
+    thiss.group = new THREE.Group()
+    thiss.group.add(thiss.inputPlane)
+    thiss.group.add(thiss.activationPlane1)
+    thiss.group.add(thiss.activationPlane2)
+    thiss.world = world
+    thiss.world.add(thiss.group)
 
-    this.inputPlane.position.add(new THREE.Vector3(0, 0, -1))
-    this.activationPlane1.position.add(new THREE.Vector3(0, 0, -0.5))
+    thiss.inputPlane.position.add(new THREE.Vector3(0, 0, -1))
+    thiss.activationPlane1.position.add(new THREE.Vector3(0, 0, -0.5))
 
-    if (this.config.do2d) {
+    if (thiss.config.do2d) {
       const canvas2d = document.createElement('canvas')
       canvas2d.width = 224
       canvas2d.height = 224
       document.body.appendChild(canvas2d)
-      this.ctx2d = canvas2d.getContext('2d')
+      thiss.ctx2d = canvas2d.getContext('2d')
     }
+    return thiss
   }
 
   async loadImageInput(url) {
@@ -84,6 +83,7 @@ export class Demonetvis {
   }
 
   async display() {
+    console.log("displaying")
     const sstime = performance.now()
     const tensors = [this.tensorInput,
     // this.tensorActivation1,
@@ -111,12 +111,14 @@ export class Demonetvis {
   async _update() {
     this.imageIndex = (this.imageIndex + 1) % (this.images.length)
     this.tensorInput = this.images[this.imageIndex]
-    switchToTf()
+    tfMode()
     await this.predict()
+    threeMode()
     await this.display()
   }
 
   update() {
+    console.log("updating")
     if (this.images && !this.processing && ((performance.now() - this.lastFrameTime) > this.minDelay * 1000)) {
       this.lastFrameTime = performance.now()
       this.processing = true
