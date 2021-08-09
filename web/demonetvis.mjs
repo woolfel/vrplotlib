@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { tensorTexture, tensorImagePlane, imgUrlToTensor, tfMode, threeMode, tensorInternalTexture } from "./common.mjs";
+import { tensorTexture, tensorTextureGl, tensorImagePlane, imgUrlToTensor, tfMode, threeMode, imagePlane, commonCopyTexture, threeInternalTexture } from "./common.mjs";
 import * as tf from "@tensorflow/tfjs";
 export class Demonetvis {
   static async create(world, config) {
@@ -8,14 +8,12 @@ export class Demonetvis {
     thiss.config = { ...defaultconfig, config }
     thiss.processing = false
 
-    thiss.minDelay = 1
+    thiss.minDelay = 3
     thiss.lastFrameTime = -1000000000000
 
     const images = await Promise.all(["n01440764_tench.jpeg", "n01443537_goldfish.jpeg", "n01484850_great_white_shark.jpeg", "n01491361_tiger_shark.jpeg", "n01494475_hammerhead.jpeg"].map(url => imgUrlToTensor("./imagenet/" + url)))
     thiss.images = images
     thiss.imageIndex = 0
-    console.log(thiss.images)
-    console.log(tensorInternalTexture(thiss.images[0]))
 
     const input = tf.input({ shape: [3, 224, 224] })
     const convDefaults = { filters: 15, kernelSize: 3, strides: 1, activation: 'relu', dataFormat: 'channelsFirst', kernelInitializer: "glorotUniform", padding: "same" }
@@ -52,6 +50,16 @@ export class Demonetvis {
       document.body.appendChild(canvas2d)
       thiss.ctx2d = canvas2d.getContext('2d')
     }
+
+    await new Promise((resolve) =>
+      imagePlane("./imagenet/n01537544_indigo_bunting.jpeg", (plane) => {
+        thiss.goodplane = plane
+        plane.position.x += 1
+        world.add(plane)
+        resolve()
+      })
+    )
+
     return thiss
   }
 
@@ -70,20 +78,13 @@ export class Demonetvis {
 
   async display2d(tensor) {
     const ntensor = tf.transpose(tf.squeeze(tf.concat([tf.add(tf.mul(tensor, tf.scalar(255)), tf.scalar(128)), tf.fill([1, 1, 224, 224], 225, "float32")], 1)), [1, 2, 0])
-    console.log(ntensor)
     const tensordata = await ntensor.data()
-    // const arr = new UInt8ClampedArray(224*224*4)
     const arr = new Uint8ClampedArray(tensordata)
-    console.log(arr)
-    // for (let i = 0; i < tensordata.length; i++) {
-
-    // }
     const imageData = new ImageData(arr, 224, 224)
     this.ctx2d.putImageData(imageData, 0, 0)
   }
 
   async display() {
-    console.log("displaying")
     const sstime = performance.now()
     const tensors = [this.tensorInput,
     // this.tensorActivation1,
@@ -97,14 +98,13 @@ export class Demonetvis {
     const renderActivation = (activation) => (async () => {
       const texture = tensorTexture(this.tensorInput)
     })
-    console.log(tensors)
-    const [i, a1, a2] = await Promise.all(tensors.map(tensorTexture))
-    this.inputPlane.children[0].material.map = i
+    tensorTextureGl(tensors[0], this.inputPlane.children[0].material.map)
     this.inputPlane.children[0].material.needsUpdate = true
-    this.activationPlane1.children[0].material.map = a1
+    tensorTextureGl(tensors[1], this.activationPlane1.children[0].material.map)
     this.activationPlane1.children[0].material.needsUpdate = true
-    this.activationPlane2.children[0].material.map = a2
+    tensorTextureGl(tensors[2], this.activationPlane2.children[0].material.map)
     this.activationPlane2.children[0].material.needsUpdate = true
+
     console.log(`display took ${performance.now() - sstime}`)
   }
 
@@ -114,11 +114,20 @@ export class Demonetvis {
     tfMode()
     await this.predict()
     threeMode()
-    await this.display()
+    // await this.display()
+
+    const planeITex = threeInternalTexture(this.inputPlane.children[0].material.map)
+    console.log(planeITex)
+    const goodtexthree = this.goodplane.children[0].material.map
+    console.log(goodtexthree)
+    const goodTex = threeInternalTexture(goodtexthree)
+    console.log(goodTex)
+    commonCopyTexture(planeITex, goodTex)
+    commonCopyTexture(goodTex, planeITex)
+    this.inputPlane.children[0].material.needsUpdate = true
   }
 
   update() {
-    console.log("updating")
     if (this.images && !this.processing && ((performance.now() - this.lastFrameTime) > this.minDelay * 1000)) {
       this.lastFrameTime = performance.now()
       this.processing = true

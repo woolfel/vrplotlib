@@ -1,30 +1,81 @@
 import * as THREE from 'three';
 import * as tf from "@tensorflow/tfjs";
+import { copyTexture } from "./gl.mjs";
+// import { bindVertexProgramAttributeStreams } from "./node_moduls/@tensorflow/tfjs-backend-webgl/src/gpgpu_util";
+let gl, renderer, whichState, tfGlState, threeGlState;
+let backend, gpgpu;
 
-let gl, whichState, tfGlState, threeGlState;
+export function threeInternalTexture(threeTex) {
+  const props = renderer.properties.get(threeTex)
+  console.log(props)
+  return props.__webglTexture
+}
 
-const gpgpu = tf.backend().gpgpu
-console.log(gpgpu)
+export function setRendererAndTf(the_renderer) {
+  gl = the_renderer.getContext()
+  backend = tf.backend()
+  gpgpu = backend.gpgpu
+  renderer = the_renderer
+}
 
-export function setGlContext(ctx) {
-  gl = ctx
+export function glMode() {
+  if (whichState !== "gl") {
+    whichState = "gl"
+  }
+}
+
+export function commonCopyTexture(from, to) {
+  copyTexture(gl, from, to)
+}
+
+function bindVertexBufferToProgramAttribute(
+  gl, program, attribute,
+  buffer, arrayEntriesPerItem, itemStrideInBytes,
+  itemOffsetInBytes) {
+  const loc = gl.getAttribLocation(program, attribute);
+  if (loc === -1) {
+    // The GPU compiler decided to strip out this attribute because it's unused,
+    // thus no need to bind.
+    return false;
+  }
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.vertexAttribPointer(
+    loc, arrayEntriesPerItem, gl.FLOAT, false, itemStrideInBytes,
+    itemOffsetInBytes);
+  gl.enableVertexAttribArray(loc);
+  return true;
+}
+
+function bindVertexProgramAttributeStreams(
+  gl, program, vertexBuffer) {
+  const posOffset = 0;               // x is the first buffer element
+  const uvOffset = 3 * 4;            // uv comes after [x y z]
+  const stride = (3 * 4) + (2 * 4);  // xyz + uv, each entry is 4-byte float.
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
+  const success = bindVertexBufferToProgramAttribute(
+    gl, program, 'clipSpacePos', vertexBuffer, 3, stride, posOffset);
+
+  return success &&
+    bindVertexBufferToProgramAttribute(
+      gl, program, 'uv', vertexBuffer, 2, stride, uvOffset);
 }
 
 export function tfMode() {
-  if (whichState == 'tf') {
+  if (whichState !== 'tf') {
     if (gpgpu.vertexAttrsAreBound) {
       // @GLPROBLEM enable scissor
       gl.useProgram(gpgpu.program);
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gpgpu.indexBuffer);
-      gpgpu_util.bindVertexProgramAttributeStreams(gl, false, gpgpu.program, gpgpu.vertexBuffer);
+      bindVertexProgramAttributeStreams(gl, gpgpu.program, gpgpu.vertexBuffer);
     }
-    whichState = 'three'
+    whichState = 'tf'
   }
 }
 
-export function threeMode() {
-  if (whichState == 'three') {
-    whichState = 'tf'
+export async function threeMode() {
+  if (whichState !== 'three') {
+    renderer.resetState()
+    whichState = 'three'
   }
 }
 
@@ -37,12 +88,15 @@ export async function imgUrlToTensor(url) {
   const result = await (new Promise((resolve) => {
     img.onload = () => {
       const tensor = tf.browser.fromPixels(img, 3)
-      console.log("IMG TENSOR DIMENSION", tensor.shape)
       const shaped = tensor.transpose([2, 0, 1]).expandDims(0).mul(tf.scalar(1 / 255))
       resolve(shaped)
     }
   }))
   return result
+}
+
+export function forceTexInit() {
+
 }
 
 export async function toUint8Array(tensor) {
@@ -53,6 +107,22 @@ export function tensorInternalTexture(tensor) {
   const texData = tf.backend().texData.get(tensor.dataId)
   const tex = texData.texture
   return tex
+}
+
+export function decodedInternalTexture(tensor) {
+  return tensorInternalTexture(backend.decode(tensor.dataId))
+}
+
+export async function tensorTextureGl(tensor, texture) {
+  if (texture.uuid) {// if it's a three texture
+    texture = threeInternalTexture(texture)
+  }
+  const decInternalTex = decodedInternalTexture(tensor)
+  console.log(decInternalTex)
+  const texProps = renderer.properties.get(texture);
+  console.log(texProps)
+  const threeTexture = texProps.__webglTexture
+  copyTexture(gl, decInternalTex, threeTexture)
 }
 
 export async function tensorTexture(tensor) { // @SWITCHY

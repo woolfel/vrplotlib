@@ -3,7 +3,7 @@ import { OrbitControls } from './OrbitControls.js';
 import { VRButton } from './VRAuto.js';
 import { XRControllerModelFactory } from './example-webxr/XRControllerModelFactory.mjs';
 
-import { imagePlane, setGlContext, tfMode, threeMode } from "./common.mjs";
+import { imagePlane, setRendererAndTf, tfMode, threeMode } from "./common.mjs";
 
 import { Demonetvis } from "./demonetvis.mjs"
 
@@ -54,10 +54,9 @@ async function init() {
 
   renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
   glContext = renderer.getContext()
-  setGlContext(glContext)
-  await tf.setBackend('cpu')
   setWebGLContext(2, glContext);
   await tf.setBackend('webgl');
+  setRendererAndTf(renderer)
 
   container = document.createElement('div');
   document.body.appendChild(container);
