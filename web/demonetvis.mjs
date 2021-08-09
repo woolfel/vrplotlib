@@ -24,9 +24,9 @@ export class Demonetvis {
     thiss.model = tf.model({ inputs: input, outputs: [hidden, output] })
     // thiss.model.summary()
 
-    thiss.tensorInput = tf.tensor(new Float32Array(3 * 224 * 224).fill(1), [1, 3, 224, 224])
-    thiss.tensorActivation1 = tf.tensor(new Float32Array(3 * 224 * 224).fill(1), [1, 3, 224, 224])
-    thiss.tensorActivation2 = tf.tensor(new Float32Array(3 * 224 * 224).fill(1), [1, 3, 224, 224])
+    thiss.tensorInput = tf.tensor(new Float32Array(3 * 224 * 224).fill(0), [1, 3, 224, 224])
+    thiss.tensorActivation1 = tf.tensor(new Float32Array(3 * 224 * 224).fill(0.05), [1, 3, 224, 224])
+    thiss.tensorActivation2 = tf.tensor(new Float32Array(3 * 224 * 224).fill(0.1), [1, 3, 224, 224])
     const [a, b, c] = await Promise.all([tensorImagePlane(thiss.tensorInput),
     tensorImagePlane(thiss.tensorActivation1, 0.6),
     tensorImagePlane(thiss.tensorActivation2, 0.6)])
@@ -73,7 +73,7 @@ export class Demonetvis {
     const [act1, act2] = this.model.predict(this.tensorInput)
     this.tensorActivation1 = act1
     this.tensorActivation2 = act2
-    console.log(`predict teentsy took ${performance.now() - sstime}`)
+    // console.log(`predict teentsy took ${performance.now() - sstime}`)
   }
 
   async display2d(tensor) {
@@ -99,11 +99,11 @@ export class Demonetvis {
       const texture = tensorTexture(this.tensorInput)
     })
     tensorTextureGl(tensors[0], this.inputPlane.children[0].material.map)
-    this.inputPlane.children[0].material.needsUpdate = true
+    // this.inputPlane.children[0].material.needsUpdate = true
     tensorTextureGl(tensors[1], this.activationPlane1.children[0].material.map)
-    this.activationPlane1.children[0].material.needsUpdate = true
+    // this.activationPlane1.children[0].material.needsUpdate = true
     tensorTextureGl(tensors[2], this.activationPlane2.children[0].material.map)
-    this.activationPlane2.children[0].material.needsUpdate = true
+    // this.activationPlane2.children[0].material.needsUpdate = true
 
     console.log(`display took ${performance.now() - sstime}`)
   }
@@ -125,6 +125,7 @@ export class Demonetvis {
     commonCopyTexture(planeITex, goodTex)
     commonCopyTexture(goodTex, planeITex)
     this.inputPlane.children[0].material.needsUpdate = true
+
   }
 
   update() {

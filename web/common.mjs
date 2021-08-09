@@ -28,38 +28,6 @@ export function commonCopyTexture(from, to) {
   copyTexture(gl, from, to)
 }
 
-function bindVertexBufferToProgramAttribute(
-  gl, program, attribute,
-  buffer, arrayEntriesPerItem, itemStrideInBytes,
-  itemOffsetInBytes) {
-  const loc = gl.getAttribLocation(program, attribute);
-  if (loc === -1) {
-    // The GPU compiler decided to strip out this attribute because it's unused,
-    // thus no need to bind.
-    return false;
-  }
-  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-  gl.vertexAttribPointer(
-    loc, arrayEntriesPerItem, gl.FLOAT, false, itemStrideInBytes,
-    itemOffsetInBytes);
-  gl.enableVertexAttribArray(loc);
-  return true;
-}
-
-function bindVertexProgramAttributeStreams(
-  gl, program, vertexBuffer) {
-  const posOffset = 0;               // x is the first buffer element
-  const uvOffset = 3 * 4;            // uv comes after [x y z]
-  const stride = (3 * 4) + (2 * 4);  // xyz + uv, each entry is 4-byte float.
-  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
-  const success = bindVertexBufferToProgramAttribute(
-    gl, program, 'clipSpacePos', vertexBuffer, 3, stride, posOffset);
-
-  return success &&
-    bindVertexBufferToProgramAttribute(
-      gl, program, 'uv', vertexBuffer, 2, stride, uvOffset);
-}
-
 export function tfMode() {
   if (whichState !== 'tf') {
     if (gpgpu.vertexAttrsAreBound) {
@@ -73,8 +41,8 @@ export function tfMode() {
 }
 
 export async function threeMode() {
+  renderer.resetState()
   if (whichState !== 'three') {
-    renderer.resetState()
     whichState = 'three'
   }
 }
@@ -196,4 +164,37 @@ export function imagePlane(url, callback) {
       console.error('An error happened.');
     }
   );
+}
+
+
+function bindVertexBufferToProgramAttribute(
+  gl, program, attribute,
+  buffer, arrayEntriesPerItem, itemStrideInBytes,
+  itemOffsetInBytes) {
+  const loc = gl.getAttribLocation(program, attribute);
+  if (loc === -1) {
+    // The GPU compiler decided to strip out this attribute because it's unused,
+    // thus no need to bind.
+    return false;
+  }
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.vertexAttribPointer(
+    loc, arrayEntriesPerItem, gl.FLOAT, false, itemStrideInBytes,
+    itemOffsetInBytes);
+  gl.enableVertexAttribArray(loc);
+  return true;
+}
+
+function bindVertexProgramAttributeStreams(
+  gl, program, vertexBuffer) {
+  const posOffset = 0;               // x is the first buffer element
+  const uvOffset = 3 * 4;            // uv comes after [x y z]
+  const stride = (3 * 4) + (2 * 4);  // xyz + uv, each entry is 4-byte float.
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
+  const success = bindVertexBufferToProgramAttribute(
+    gl, program, 'clipSpacePos', vertexBuffer, 3, stride, posOffset);
+
+  return success &&
+    bindVertexBufferToProgramAttribute(
+      gl, program, 'uv', vertexBuffer, 2, stride, uvOffset);
 }

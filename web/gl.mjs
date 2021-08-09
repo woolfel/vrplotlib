@@ -27,14 +27,14 @@ void main() {
     programInfo = twgl.createProgramInfo(gl, [vs, fs]);
     console.log(programInfo)
   }
-  const fb = gl.createFramebuffer()
-  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
-  gl.framebufferTexture2D(
-    gl.FRAMEBUFFER,
-    gl.COLOR_ATTACHMENT0,  // attach texture as COLOR_ATTACHMENT0
-    gl.TEXTURE_2D,         // attach a 2D texture
-    output,                // the texture to attach
-    0);
+  const fbi = twgl.createFramebufferInfo(gl, [{ attachment: output }]);
+  twgl.bindFramebufferInfo(gl, fbi);
+  // gl.framebufferTexture2D(
+  //   gl.FRAMEBUFFER,
+  //   gl.COLOR_ATTACHMENT0,  // attach texture as COLOR_ATTACHMENT0
+  //   gl.TEXTURE_2D,         // attach a 2D texture
+  //   output,                // the texture to attach
+  //   0);
 
   if (true || !bufferInfo) {
     const arrays = {
@@ -51,14 +51,12 @@ void main() {
   }
   gl.useProgram(programInfo.program)
   const uniforms = { texin: input }
-  console.log(input)
   twgl.setUniforms(programInfo, uniforms)
-  gl.useProgram(programInfo.program);
   twgl.setBuffersAndAttributes(gl, programInfo, bufferInfo);
   twgl.drawBufferInfo(gl, bufferInfo);
 
   // undo gl state changes
-  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  // gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
   console.log(`copytexture took ${performance.now() - stime}`)
 }
