@@ -5,60 +5,23 @@ let programInfo, bufferInfo;
 export function copyTexture(gl, input, output) {
   const stime = performance.now()
   // console.log(Object.getPrototypeOf(gl))
-  if (true || !programInfo) {
-    var vs = `
-attribute vec4 position;
-uniform mat4 matrix;
-varying vec2 v_texcoord;
-void main() {
-  gl_Position = matrix * position;
-  v_texcoord = position.xy * .5 + .5;
-}
-`;
 
-    var fs = `
-precision mediump float;
-varying vec2 v_texcoord;
-uniform sampler2D texin;
-void main() {
-  gl_FragColor = texture2D(texin, v_texcoord);
-}
-`;
-    programInfo = twgl.createProgramInfo(gl, [vs, fs]);
-    console.log(programInfo)
-  }
-  const fb = gl.createFramebuffer()
-  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+
+  const fbi = twgl.createFramebufferInfo(gl);
+  gl.bindTexture(gl.TEXTURE_2D, input)
+  twgl.bindFramebufferInfo(gl, fbi);
   gl.framebufferTexture2D(
     gl.FRAMEBUFFER,
-    gl.COLOR_ATTACHMENT0,  // attach texture as COLOR_ATTACHMENT0
-    gl.TEXTURE_2D,         // attach a 2D texture
-    output,                // the texture to attach
+    gl.COLOR_ATTACHMENT0, // attach texture as COLOR_ATTACHMENT0
+    gl.TEXTURE_2D,        // attach a 2D texture
+    input,                // the texture to attach
     0);
 
-  if (true || !bufferInfo) {
-    const arrays = {
-      position: [
-        -1, -1, 0,
-        1, -1, 0,
-        -1, 1, 0,
-        -1, 1, 0,
-        1, -1, 0,
-        1, 1, 0
-      ],
-    };
-    bufferInfo = twgl.createBufferInfoFromArrays(gl, arrays);
-  }
-  gl.useProgram(programInfo.program)
-  const uniforms = { texin: input }
-  console.log(input)
-  twgl.setUniforms(programInfo, uniforms)
-  gl.useProgram(programInfo.program);
-  twgl.setBuffersAndAttributes(gl, programInfo, bufferInfo);
-  twgl.drawBufferInfo(gl, bufferInfo);
+  gl.bindTexture(gl.TEXTURE_2D, output)
+  gl.copyTexImage2D(gl.TEXTURE_2D, 0, gl.RGB, 0, 0, 500, 375, 0);
 
   // undo gl state changes
-  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  // gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
   console.log(`copytexture took ${performance.now() - stime}`)
 }

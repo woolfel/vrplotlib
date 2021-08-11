@@ -24,23 +24,23 @@ export class Demonetvis {
     thiss.model = tf.model({ inputs: input, outputs: [hidden, output] })
     // thiss.model.summary()
 
-    thiss.tensorInput = tf.tensor(new Float32Array(3 * 224 * 224).fill(1), [1, 3, 224, 224])
-    thiss.tensorActivation1 = tf.tensor(new Float32Array(3 * 224 * 224).fill(1), [1, 3, 224, 224])
-    thiss.tensorActivation2 = tf.tensor(new Float32Array(3 * 224 * 224).fill(1), [1, 3, 224, 224])
+    thiss.tensorInput = tf.tensor(new Float32Array(3 * 224 * 224).fill(0), [1, 3, 224, 224])
+    thiss.tensorActivation1 = tf.tensor(new Float32Array(3 * 224 * 224).fill(0.05), [1, 3, 224, 224])
+    thiss.tensorActivation2 = tf.tensor(new Float32Array(3 * 224 * 224).fill(0.1), [1, 3, 224, 224])
     const [a, b, c] = await Promise.all([tensorImagePlane(thiss.tensorInput),
     tensorImagePlane(thiss.tensorActivation1, 0.6),
     tensorImagePlane(thiss.tensorActivation2, 0.6)])
-    thiss.inputPlane = a
+    thiss.group = new THREE.Group()
+    // thiss.inputPlane = a
+    // thiss.group.add(thiss.inputPlane)
     thiss.activationPlane1 = b
     thiss.activationPlane2 = c
     thiss.group = new THREE.Group()
-    thiss.group.add(thiss.inputPlane)
     thiss.group.add(thiss.activationPlane1)
     thiss.group.add(thiss.activationPlane2)
     thiss.world = world
     thiss.world.add(thiss.group)
 
-    thiss.inputPlane.position.add(new THREE.Vector3(0, 0, -1))
     thiss.activationPlane1.position.add(new THREE.Vector3(0, 0, -0.5))
 
     if (thiss.config.do2d) {
@@ -51,14 +51,22 @@ export class Demonetvis {
       thiss.ctx2d = canvas2d.getContext('2d')
     }
 
-    await new Promise((resolve) =>
-      imagePlane("./imagenet/n01537544_indigo_bunting.jpeg", (plane) => {
+    await new Promise((resolve) => {
+      imagePlane("./imagenet/n01498041_stingray.jpeg", (plane) => {
         thiss.goodplane = plane
         plane.position.x += 1
-        world.add(plane)
-        resolve()
+        thiss.group.add(plane)
+        imagePlane("./imagenet/n01534433_junco.jpeg", (plane) => {
+          console.log("secondthinggot")
+          thiss.inputPlane = plane
+          plane.position.x += 1
+          thiss.inputPlane.position.add(new THREE.Vector3(-1, 0, -1))
+          thiss.group.add(plane)
+
+          resolve()
+        })
       })
-    )
+    })
 
     return thiss
   }
@@ -73,7 +81,7 @@ export class Demonetvis {
     const [act1, act2] = this.model.predict(this.tensorInput)
     this.tensorActivation1 = act1
     this.tensorActivation2 = act2
-    console.log(`predict teentsy took ${performance.now() - sstime}`)
+    // console.log(`predict teentsy took ${performance.now() - sstime}`)
   }
 
   async display2d(tensor) {
@@ -99,11 +107,11 @@ export class Demonetvis {
       const texture = tensorTexture(this.tensorInput)
     })
     tensorTextureGl(tensors[0], this.inputPlane.children[0].material.map)
-    this.inputPlane.children[0].material.needsUpdate = true
+    // this.inputPlane.children[0].material.needsUpdate = true
     tensorTextureGl(tensors[1], this.activationPlane1.children[0].material.map)
-    this.activationPlane1.children[0].material.needsUpdate = true
+    // this.activationPlane1.children[0].material.needsUpdate = true
     tensorTextureGl(tensors[2], this.activationPlane2.children[0].material.map)
-    this.activationPlane2.children[0].material.needsUpdate = true
+    // this.activationPlane2.children[0].material.needsUpdate = true
 
     console.log(`display took ${performance.now() - sstime}`)
   }
@@ -125,6 +133,7 @@ export class Demonetvis {
     commonCopyTexture(planeITex, goodTex)
     commonCopyTexture(goodTex, planeITex)
     this.inputPlane.children[0].material.needsUpdate = true
+
   }
 
   update() {

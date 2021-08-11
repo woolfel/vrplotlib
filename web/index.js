@@ -70,7 +70,7 @@ async function init() {
   scene.background = new THREE.Color(0x808080);
 
   // this is flatscreen camera - xr makes camera with different settings
-  camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
+  camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.07, 100);
   camera.position.set(0, 1.6, 3);
 
   controls = new OrbitControls(camera, container);
@@ -258,6 +258,5 @@ function render() {
   }
   threeMode()
   renderer.render(scene, camera);
-  tfMode()
   prevButtons = JSON.parse(JSON.stringify(buttons))
 }
