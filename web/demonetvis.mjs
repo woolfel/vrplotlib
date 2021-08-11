@@ -30,17 +30,17 @@ export class Demonetvis {
     const [a, b, c] = await Promise.all([tensorImagePlane(thiss.tensorInput),
     tensorImagePlane(thiss.tensorActivation1, 0.6),
     tensorImagePlane(thiss.tensorActivation2, 0.6)])
-    thiss.inputPlane = a
+    thiss.group = new THREE.Group()
+    // thiss.inputPlane = a
+    // thiss.group.add(thiss.inputPlane)
     thiss.activationPlane1 = b
     thiss.activationPlane2 = c
     thiss.group = new THREE.Group()
-    thiss.group.add(thiss.inputPlane)
     thiss.group.add(thiss.activationPlane1)
     thiss.group.add(thiss.activationPlane2)
     thiss.world = world
     thiss.world.add(thiss.group)
 
-    thiss.inputPlane.position.add(new THREE.Vector3(0, 0, -1))
     thiss.activationPlane1.position.add(new THREE.Vector3(0, 0, -0.5))
 
     if (thiss.config.do2d) {
@@ -51,14 +51,22 @@ export class Demonetvis {
       thiss.ctx2d = canvas2d.getContext('2d')
     }
 
-    await new Promise((resolve) =>
-      imagePlane("./imagenet/n01537544_indigo_bunting.jpeg", (plane) => {
+    await new Promise((resolve) => {
+      imagePlane("./imagenet/n01498041_stingray.jpeg", (plane) => {
         thiss.goodplane = plane
         plane.position.x += 1
-        world.add(plane)
-        resolve()
+        thiss.group.add(plane)
+        imagePlane("./imagenet/n01534433_junco.jpeg", (plane) => {
+          console.log("secondthinggot")
+          thiss.inputPlane = plane
+          plane.position.x += 1
+          thiss.inputPlane.position.add(new THREE.Vector3(-1, 0, -1))
+          thiss.group.add(plane)
+
+          resolve()
+        })
       })
-    )
+    })
 
     return thiss
   }
