@@ -10,6 +10,8 @@ import { Demonetvis } from "./demonetvis.mjs"
 import { setWebGLContext } from "@tensorflow/tfjs-backend-webgl";
 import * as tf from "@tensorflow/tfjs";
 
+let enableVRImmediately = false;
+
 let visualization;
 
 let container;
@@ -110,7 +112,7 @@ async function init() {
   renderer.xr.enabled = true;
   container.appendChild(renderer.domElement);
 
-  document.body.appendChild(VRButton.createButton(renderer, false));
+  document.body.appendChild(VRButton.createButton(renderer, enableVRImmediately));
 
   // controllers
   const contone = renderer.xr.getController(0);

@@ -4,24 +4,24 @@ import { copyTexture } from "./gl.mjs";
 // import { bindVertexProgramAttributeStreams } from "./node_moduls/@tensorflow/tfjs-backend-webgl/src/gpgpu_util";
 let gl, renderer, whichState, tfGlState, threeGlState;
 let backend, gpgpu;
+let playModesSafe = true;
 
 export function threeInternalTexture(threeTex) {
   const props = renderer.properties.get(threeTex)
-  console.log(props)
   return props.__webglTexture
 }
 
 export function setRendererAndTf(the_renderer) {
+  renderer = the_renderer
   gl = the_renderer.getContext()
   backend = tf.backend()
   gpgpu = backend.gpgpu
-  renderer = the_renderer
 }
 
 export function glMode() {
-  if (whichState !== "gl") {
-    whichState = "gl"
+  if (playModesSafe || whichState !== "gl") {
   }
+  whichState = "gl"
 }
 
 export function commonCopyTexture(from, to) {
@@ -61,22 +61,22 @@ function bindVertexProgramAttributeStreams(
 }
 
 export function tfMode() {
-  if (whichState !== 'tf') {
+  if (playModesSafe || whichState !== 'tf') {
     if (gpgpu.vertexAttrsAreBound) {
       // @GLPROBLEM enable scissor
       gl.useProgram(gpgpu.program);
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gpgpu.indexBuffer);
       bindVertexProgramAttributeStreams(gl, gpgpu.program, gpgpu.vertexBuffer);
     }
-    whichState = 'tf'
   }
+  whichState = 'tf'
 }
 
 export async function threeMode() {
-  if (whichState !== 'three') {
+  if (playModesSafe || whichState !== 'three') {
     renderer.resetState()
-    whichState = 'three'
   }
+  whichState = 'three'
 }
 
 

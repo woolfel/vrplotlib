@@ -51,6 +51,14 @@ class VRButton {
 
 			};
 
+			document.addEventListener("keydown", (event) => {
+				if (event.key === "Escape" && currentSession) {
+					currentSession.end()
+					event.stopPropagation()
+					event.preventDefault()
+				}
+			})
+
 			function Enter() {
 				if (currentSession === null) {
 
@@ -61,7 +69,8 @@ class VRButton {
 					// ('local' is always available for immersive sessions and doesn't need to
 					// be requested separately.)
 
-					const sessionInit = { optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking', 'layers'] };
+					const sessionInit = { optionalFeatures: [] };
+					// const sessionInit = { optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking', 'layers'] };
 					navigator.xr.requestSession('immersive-vr', sessionInit).then(onSessionStarted);
 
 				} else {
