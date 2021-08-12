@@ -119,7 +119,9 @@ export function showActivationAcrossPlanes(activation, planes) {
     throw new Error(`activation ${activation.shape[1]} has fewer channels than planes ${planes.length}`)
   }
   tf.tidy(() => {
-    const layers = tf.split(tf.squeeze(tf.mul(activation, tf.scalar(255))), Math.floor(activation.shape[1] / 3), 1)
+    const numsplits = Math.floor(activation.shape[1] / 3)
+    console.log(numsplits)
+    const layers = tf.split(tf.squeeze(tf.mul(activation, tf.scalar(255))), numsplits, 0)
     for (let i = 0; i < planes.length; i++) {
       const plane = planes[i]
       const tensInternal = decodedInternalTexture(layers[i])
@@ -140,6 +142,7 @@ export async function tensorTexture(tensor) { // @SWITCHY
     threeMode()
     const hasA = tensor.shape[0] === 4
     texture = new THREE.DataTexture(array, tensor.shape[1], tensor.shape[2], hasA ? THREE.RGBAFormat : THREE.RGBFormat, THREE.FloatType);
+    texture.generateMipmaps = false;
     tfMode()
   } else {
     const array = tf.transpose(tf.squeeze(tensor), [1, 2, 0]).dataSync()
@@ -182,20 +185,17 @@ export function doubleSidedPlane(texture, opacity = 1) {
 
 export function imagePlane(url, callback) {
   const loader = new THREE.TextureLoader();
-
   // load a resource
   loader.load(
     // resource URL
     url,
-
     // onLoad callback
     function (texture) {
+      // texture.generateMipmaps = false;
       callback(doubleSidedPlane(texture))
     },
-
     // onProgress callback currently not supported
     undefined,
-
     // onError callback
     function (err) {
       console.error('An error happened.');

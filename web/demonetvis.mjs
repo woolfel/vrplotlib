@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { decodedInternalTexture, tensorTextureGl, tensorInternalTexture, decodeTensor, tensorImagePlane, imgUrlToTensor, tfMode, threeMode, glMode, imagePlane, commonCopyTexture, threeInternalTexture, dispose } from "./common.mjs";
+import { tensorImagePlane, imgUrlToTensor, tfMode, threeMode, imagePlane, commonCopyTexture, threeInternalTexture, showActivationAcrossPlanes } from "./common.mjs";
+import * as common from "./common.mjs";
 import * as tf from "@tensorflow/tfjs";
 export class Demonetvis {
   static async create(world, config) {
@@ -28,18 +29,18 @@ export class Demonetvis {
     thiss.tensorActivation1 = tf.tensor(new Float32Array(3 * 224 * 224).fill(0.05), [1, 3, 224, 224])
     thiss.tensorActivation2 = tf.tensor(new Float32Array(3 * 224 * 224).fill(0.1), [1, 3, 224, 224])
     const [a, b, c] = await Promise.all([tensorImagePlane(thiss.tensorInput),
-    tensorImagePlane(thiss.tensorActivation1, 0.6),
-    tensorImagePlane(thiss.tensorActivation2, 0.6)])
+    tensorImagePlane(thiss.tensorActivation1, 1),
+    tensorImagePlane(thiss.tensorActivation2, 1)])
     thiss.group = new THREE.Group()
-    // thiss.inputPlane = a
-    // thiss.group.add(thiss.inputPlane)
+    thiss.inputPlane = a
+    thiss.group.add(thiss.inputPlane)
     thiss.activationPlane1 = b
     thiss.activationPlane2 = c
-    thiss.group = new THREE.Group()
     thiss.group.add(thiss.activationPlane1)
     thiss.group.add(thiss.activationPlane2)
     thiss.world = world
     thiss.world.add(thiss.group)
+    thiss.inputPlane.position.add(new THREE.Vector3(0, 0, -1))
 
     thiss.activationPlane1.position.add(new THREE.Vector3(0, 0, -0.5))
 
@@ -56,24 +57,19 @@ export class Demonetvis {
         thiss.goodplane = plane
         plane.position.x += 1
         thiss.group.add(plane)
-        imagePlane("./imagenet/n01534433_junco.jpeg", (plane) => {
-          console.log("secondthinggot")
-          thiss.inputPlane = plane
-          plane.position.x += 1
-          thiss.inputPlane.position.add(new THREE.Vector3(-1, 0, -1))
-          thiss.group.add(plane)
+        // imagePlane("./imagenet/n01534433_junco.jpeg", (plane) => {
+        //   console.log("secondthinggot")
+        //   thiss.inputPlane = plane
+        //   plane.position.x += 1
+        //   thiss.inputPlane.position.add(new THREE.Vector3(-1, 0, -1))
+        //   thiss.group.add(plane)
 
-          resolve()
-        })
+        // })
+        resolve()
       })
     })
 
     return thiss
-  }
-
-  async loadImageInput(url) {
-    const img = await imgUrlToTensor(url)
-    this.tensorInput = img
   }
 
   predict() {
@@ -97,6 +93,10 @@ export class Demonetvis {
   async display() {
     const sstime = performance.now()
 
+    showActivationAcrossPlanes(this.tensorInput, [this.inputPlane])
+    showActivationAcrossPlanes(this.tensorActivation1, [this.activationPlane1])
+    showActivationAcrossPlanes(this.tensorActivation2, [this.activationPlane2])
+
     const tensors = [this.tensorInput,
     // this.tensorActivation1,
     // this.tensorActivation2
@@ -108,19 +108,23 @@ export class Demonetvis {
     }
 
     // commonCopyTexture( decodedInternalTexture(tensors[0]), threeInternalTexture(this.inputPlane.children[0].material.map))
-    console.log(tensors[1])
-    const decodedTensor = decodeTensor(tensors[1])
-    console.log("decoded tensor")
-    console.log(decodedTensor)
-    const tensorTexture = tensorInternalTexture(decodedTensor)
-    console.log(tensorTexture)
-    const planeTexture = threeInternalTexture(this.activationPlane1.children[0].material.map)
-    console.log(planeTexture)
-    commonCopyTexture(tensorTexture, planeTexture, 224, 224)
-    dispose(decodedTensor)
-    tensors[1].dispose()
-    tensors[2].dispose()
+
+
+    // console.log(tensors[1])
+    // const decodedTensor = decodeTensor(tensors[1])
+    // console.log("decoded tensor")
+    // console.log(decodedTensor)
+    // const tensorTexture = tensorInternalTexture(decodedTensor)
+    // console.log(tensorTexture)
+    // const planeTexture = threeInternalTexture(this.activationPlane1.children[0].material.map)
+    // console.log(planeTexture)
+    // commonCopyTexture(tensorTexture, planeTexture, 224, 224)
+    // dispose(decodedTensor)
+    // tensors[1].dispose()
+    // tensors[2].dispose()
     // dispose(tensors[1])
+
+
     // dispose(tensors[0])
     // commonCopyTexture(decodedInternalTexture(tensors[2]), threeInternalTexture(this.activationPlane2.children[0].material.map))
     // this.inputPlane.children[0].material.needsUpdate = true
@@ -130,9 +134,13 @@ export class Demonetvis {
     console.log(`display took ${performance.now() - sstime}`)
   }
 
-  async _update() {
+  cycleImage() {
     this.imageIndex = (this.imageIndex + 1) % (this.images.length)
     this.tensorInput = this.images[this.imageIndex]
+  }
+
+  async _update() {
+    this.cycleImage()
     tfMode()
     this.predict()
     threeMode()

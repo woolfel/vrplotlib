@@ -18,7 +18,7 @@ export function copyTexture(gl, input, output, width, height) {
   //   0);
   gl.bindTexture(gl.TEXTURE_2D, output)
   gl.copyTexImage2D(gl.TEXTURE_2D, 0, format, 0, 0, width, height, 0);
-
+  gl.generateMipmap(gl.TEXTURE_2D)
   // undo gl state changes
   // gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 

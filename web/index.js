@@ -170,6 +170,8 @@ function onWindowResize() {
 }
 
 function animate() {
+  // render once to make three load the textures
+  renderer.render(scene, camera);
   renderer.setAnimationLoop(render);
 }
 
