@@ -7,15 +7,14 @@ export function copyTexture(gl, input, output) {
   // console.log(Object.getPrototypeOf(gl))
 
 
-  const fbi = twgl.createFramebufferInfo(gl);
-  gl.bindTexture(gl.TEXTURE_2D, input)
+  const fbi = twgl.createFramebufferInfo(gl, [{ attachment: input, format: gl.RGB }], 500, 375);
   twgl.bindFramebufferInfo(gl, fbi);
-  gl.framebufferTexture2D(
-    gl.FRAMEBUFFER,
-    gl.COLOR_ATTACHMENT0, // attach texture as COLOR_ATTACHMENT0
-    gl.TEXTURE_2D,        // attach a 2D texture
-    input,                // the texture to attach
-    0);
+  // gl.framebufferTexture2D(
+  //   gl.FRAMEBUFFER,
+  //   gl.COLOR_ATTACHMENT0, // attach texture as COLOR_ATTACHMENT0
+  //   gl.TEXTURE_2D,        // attach a 2D texture
+  //   input,                // the texture to attach
+  //   0);
 
   gl.bindTexture(gl.TEXTURE_2D, output)
   gl.copyTexImage2D(gl.TEXTURE_2D, 0, gl.RGB, 0, 0, 500, 375, 0);

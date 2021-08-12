@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import * as tf from "@tensorflow/tfjs";
 import { copyTexture } from "./gl.mjs";
+
+// import { getDenseTexShape } from "@tensorflow/tfjs-backend-webgl/src/tex_util"
+// console.log(getDenseTexShape)
 // import { bindVertexProgramAttributeStreams } from "./node_moduls/@tensorflow/tfjs-backend-webgl/src/gpgpu_util";
 let gl, renderer, whichState, tfGlState, threeGlState;
 let backend, gpgpu;
@@ -16,6 +19,7 @@ export function setRendererAndTf(the_renderer) {
   gl = the_renderer.getContext()
   backend = tf.backend()
   gpgpu = backend.gpgpu
+  console.log(gpgpu)
 }
 
 export function glMode() {
@@ -30,8 +34,12 @@ export function commonCopyTexture(from, to) {
 
 export function tfMode() {
   if (playModesSafe || whichState !== 'tf') {
+    if (gpgpu.framebuffer) {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, gpgpu.framebuffer)
+    }
     if (gpgpu.vertexAttrsAreBound) {
       // @GLPROBLEM enable scissor
+      gl.scissor(0, 0, gl.canvas.width, gl.canvas.height)
       gl.useProgram(gpgpu.program);
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gpgpu.indexBuffer);
       bindVertexProgramAttributeStreams(gl, gpgpu.program, gpgpu.vertexBuffer);
@@ -42,6 +50,7 @@ export function tfMode() {
 
 export async function threeMode() {
   if (playModesSafe || whichState !== 'three') {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null)
     renderer.resetState()
   }
   whichState = 'three'

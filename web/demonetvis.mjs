@@ -8,7 +8,7 @@ export class Demonetvis {
     thiss.config = { ...defaultconfig, config }
     thiss.processing = false
 
-    thiss.minDelay = 3
+    thiss.minDelay = 1
     thiss.lastFrameTime = -1000000000000
 
     const images = await Promise.all(["n01440764_tench.jpeg", "n01443537_goldfish.jpeg", "n01484850_great_white_shark.jpeg", "n01491361_tiger_shark.jpeg", "n01494475_hammerhead.jpeg"].map(url => imgUrlToTensor("./imagenet/" + url)))
@@ -130,7 +130,6 @@ export class Demonetvis {
     console.log(goodtexthree)
     const goodTex = threeInternalTexture(goodtexthree)
     console.log(goodTex)
-    commonCopyTexture(planeITex, goodTex)
     commonCopyTexture(goodTex, planeITex)
     this.inputPlane.children[0].material.needsUpdate = true
 
