@@ -32,8 +32,11 @@ let rotpoint;
 
 let glContext;
 
+
 const config = { moveScale: true }
+
 let prevButtons = { left: {}, right: {} }
+let buttons, axes;
 
 const tempfn = async () => {
 
@@ -167,10 +170,9 @@ function onWindowResize() {
 }
 
 function animate() {
-
   renderer.setAnimationLoop(render);
-
 }
+
 let isAnimating = true
 document.addEventListener("keydown", (event) => {
   switch (event.key) {
@@ -189,19 +191,19 @@ document.addEventListener("keydown", (event) => {
   }
 })
 
-function render() {
+function readInputs() {
+  buttons = { left: [], right: [] }
+  axes = { left: [], right: [] }
   const session = renderer.xr.getSession();
-  let buttons = { left: [], right: [] }
-  let axes = { left: [], right: [] }
   if (session && session.inputSources) {  //only if we are in a webXR session
     for (const sourceXR of session.inputSources) {
       buttons[sourceXR.handedness] = sourceXR.gamepad.buttons
       axes[sourceXR.handedness] = sourceXR.gamepad.axes
     }
   }
+}
 
-  // rotpoint.position.sub(rotpoint.position).add(world.position)
-
+function grabMovement() {
   // gorn+tiltbrush movement
   if (buttons.right[4]?.pressed && buttons.left[4]?.pressed) {
     const prevDir = grabposLeft.clone().sub(grabposRight)
@@ -251,12 +253,19 @@ function render() {
   }
   grabposLeft = controllerLeft.position.clone()
   grabposRight = controllerRight.position.clone()
+}
 
-  const inputs = { controllerLeft, controllerRight, buttons, prevButtons }
+function render() {
+  threeMode()
+
+  readInputs()
+
+  grabMovement()
+
+  const inputs = { controllerLeft, controllerRight, buttons, prevButtons, axes }
   if (visualization) {
     visualization.update(inputs)
   }
-  threeMode()
   renderer.render(scene, camera);
   prevButtons = JSON.parse(JSON.stringify(buttons))
 }

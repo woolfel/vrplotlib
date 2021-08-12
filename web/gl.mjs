@@ -1,13 +1,14 @@
 import * as twgl from "twgl.js";
-
 let programInfo, bufferInfo;
-
-export function copyTexture(gl, input, output) {
+export function copyTexture(gl, input, output, width, height) {
+  const format = gl.RGBA32F;
+  // const format = gl.RGBA32F;
+  console.log(input, output)
   const stime = performance.now()
   // console.log(Object.getPrototypeOf(gl))
-
-
-  const fbi = twgl.createFramebufferInfo(gl, [{ attachment: input, format: gl.RGB }], 500, 375);
+  gl.bindTexture(gl.TEXTURE_2D, input)
+  const fbi = twgl.createFramebufferInfo(gl, [{ attachment: input, format: format, type: gl.FLOAT }], width, height);
+  console.log(fbi)
   twgl.bindFramebufferInfo(gl, fbi);
   // gl.framebufferTexture2D(
   //   gl.FRAMEBUFFER,
@@ -15,9 +16,8 @@ export function copyTexture(gl, input, output) {
   //   gl.TEXTURE_2D,        // attach a 2D texture
   //   input,                // the texture to attach
   //   0);
-
   gl.bindTexture(gl.TEXTURE_2D, output)
-  gl.copyTexImage2D(gl.TEXTURE_2D, 0, gl.RGB, 0, 0, 500, 375, 0);
+  gl.copyTexImage2D(gl.TEXTURE_2D, 0, format, 0, 0, width, height, 0);
 
   // undo gl state changes
   // gl.bindFramebuffer(gl.FRAMEBUFFER, null);

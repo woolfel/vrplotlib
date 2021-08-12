@@ -28,8 +28,8 @@ export function glMode() {
   whichState = "gl"
 }
 
-export function commonCopyTexture(from, to) {
-  copyTexture(gl, from, to)
+export function commonCopyTexture(from, to, width, height, alpha) {
+  copyTexture(gl, from, to, width, height, alpha)
 }
 
 export function tfMode() {
@@ -76,6 +76,10 @@ export function forceTexInit() {
 
 }
 
+export function dispose(tensor) {
+  backend.disposeData(tensor.dataId)
+}
+
 export async function toUint8Array(tensor) {
   return new Uint8Array(await tensor.mul(tf.scalar(255)).data())
 }
@@ -84,6 +88,10 @@ export function tensorInternalTexture(tensor) {
   const texData = tf.backend().texData.get(tensor.dataId)
   const tex = texData.texture
   return tex
+}
+
+export function decodeTensor(tensor) {
+  return backend.decode(tensor.dataId)
 }
 
 export function decodedInternalTexture(tensor) {
@@ -102,22 +110,42 @@ export async function tensorTextureGl(tensor, texture) {
   copyTexture(gl, decInternalTex, threeTexture)
 }
 
+export function iTexOfPlane(plane) {
+  return threeInternalTexture(plane.children[0].material.map)
+}
+
+export function showActivationAcrossPlanes(activation, planes) {
+  if (activation.shape[1] < planes.length * 3) {
+    throw new Error(`activation ${activation.shape[1]} has fewer channels than planes ${planes.length}`)
+  }
+  tf.tidy(() => {
+    const layers = tf.split(tf.squeeze(tf.mul(activation, tf.scalar(255))), Math.floor(activation.shape[1] / 3), 1)
+    for (let i = 0; i < planes.length; i++) {
+      const plane = planes[i]
+      const tensInternal = decodedInternalTexture(layers[i])
+      const texInternal = iTexOfPlane(plane)
+      commonCopyTexture(tensInternal, texInternal, activation.shape[2], activation.shape[3])
+    }
+  })
+}
+
 export async function tensorTexture(tensor) { // @SWITCHY
   if (tensor.shape.length !== 4 && tensor.shape.length !== 3) {
     throw new Error(`image tensor needs 4 or 2 dims`)
   }
   let texture;
+  tfMode()
   if (tensor.shape.length === 3) {
-    const array = await toUint8Array(tf.transpose(tensor, [1, 2, 0]))
+    const array = tf.transpose(tensor, [1, 2, 0]).dataSync()
     threeMode()
     const hasA = tensor.shape[0] === 4
-    texture = new THREE.DataTexture(array, tensor.shape[1], tensor.shape[2], hasA ? THREE.RGBAFormat : THREE.RGBFormat);
+    texture = new THREE.DataTexture(array, tensor.shape[1], tensor.shape[2], hasA ? THREE.RGBAFormat : THREE.RGBFormat, THREE.FloatType);
     tfMode()
   } else {
-    const array = await toUint8Array(tf.transpose(tf.squeeze(tensor), [1, 2, 0]))
+    const array = tf.transpose(tf.squeeze(tensor), [1, 2, 0]).dataSync()
     threeMode()
     const hasA = tensor.shape[1] === 4
-    texture = new THREE.DataTexture(array, tensor.shape[2], tensor.shape[3], hasA ? THREE.RGBAFormat : THREE.RGBFormat);
+    texture = new THREE.DataTexture(array, tensor.shape[2], tensor.shape[3], hasA ? THREE.RGBAFormat : THREE.RGBFormat, THREE.FloatType);
     tfMode()
   }
   return texture

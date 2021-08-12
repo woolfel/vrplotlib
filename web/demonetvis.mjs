@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { tensorTexture, tensorTextureGl, tensorImagePlane, imgUrlToTensor, tfMode, threeMode, imagePlane, commonCopyTexture, threeInternalTexture } from "./common.mjs";
+import { decodedInternalTexture, tensorTextureGl, tensorInternalTexture, decodeTensor, tensorImagePlane, imgUrlToTensor, tfMode, threeMode, glMode, imagePlane, commonCopyTexture, threeInternalTexture, dispose } from "./common.mjs";
 import * as tf from "@tensorflow/tfjs";
 export class Demonetvis {
   static async create(world, config) {
@@ -8,7 +8,7 @@ export class Demonetvis {
     thiss.config = { ...defaultconfig, config }
     thiss.processing = false
 
-    thiss.minDelay = 1
+    thiss.minDelay = 0.1
     thiss.lastFrameTime = -1000000000000
 
     const images = await Promise.all(["n01440764_tench.jpeg", "n01443537_goldfish.jpeg", "n01484850_great_white_shark.jpeg", "n01491361_tiger_shark.jpeg", "n01494475_hammerhead.jpeg"].map(url => imgUrlToTensor("./imagenet/" + url)))
@@ -76,7 +76,9 @@ export class Demonetvis {
     this.tensorInput = img
   }
 
-  async predict() {
+  predict() {
+    if (this.tensorActivation1) this.tensorActivation1.dispose()
+    if (this.tensorActivation2) this.tensorActivation2.dispose()
     const sstime = performance.now()
     const [act1, act2] = this.model.predict(this.tensorInput)
     this.tensorActivation1 = act1
@@ -94,6 +96,7 @@ export class Demonetvis {
 
   async display() {
     const sstime = performance.now()
+
     const tensors = [this.tensorInput,
     // this.tensorActivation1,
     // this.tensorActivation2
@@ -103,16 +106,27 @@ export class Demonetvis {
     if (this.config.do2d) {
       await this.display2d(tensors[2])
     }
-    const renderActivation = (activation) => (async () => {
-      const texture = tensorTexture(this.tensorInput)
-    })
-    tensorTextureGl(tensors[0], this.inputPlane.children[0].material.map)
-    // this.inputPlane.children[0].material.needsUpdate = true
-    tensorTextureGl(tensors[1], this.activationPlane1.children[0].material.map)
-    // this.activationPlane1.children[0].material.needsUpdate = true
-    tensorTextureGl(tensors[2], this.activationPlane2.children[0].material.map)
-    // this.activationPlane2.children[0].material.needsUpdate = true
 
+    // commonCopyTexture( decodedInternalTexture(tensors[0]), threeInternalTexture(this.inputPlane.children[0].material.map))
+    console.log(tensors[1])
+    const decodedTensor = decodeTensor(tensors[1])
+    console.log("decoded tensor")
+    console.log(decodedTensor)
+    const tensorTexture = tensorInternalTexture(decodedTensor)
+    console.log(tensorTexture)
+    const planeTexture = threeInternalTexture(this.activationPlane1.children[0].material.map)
+    console.log(planeTexture)
+    commonCopyTexture(tensorTexture, planeTexture, 224, 224)
+    dispose(decodedTensor)
+    tensors[1].dispose()
+    tensors[2].dispose()
+    // dispose(tensors[1])
+    // dispose(tensors[0])
+    // commonCopyTexture(decodedInternalTexture(tensors[2]), threeInternalTexture(this.activationPlane2.children[0].material.map))
+    // this.inputPlane.children[0].material.needsUpdate = true
+    // this.activationPlane1.children[0].material.needsUpdate = true
+    // this.activationPlane2.children[0].material.needsUpdate = true
+    // this.copyGoodTexture()
     console.log(`display took ${performance.now() - sstime}`)
   }
 
@@ -120,23 +134,26 @@ export class Demonetvis {
     this.imageIndex = (this.imageIndex + 1) % (this.images.length)
     this.tensorInput = this.images[this.imageIndex]
     tfMode()
-    await this.predict()
+    this.predict()
     threeMode()
-    // await this.display()
+    await this.display()
+  }
 
+  copyGoodTexture() {
     const planeITex = threeInternalTexture(this.inputPlane.children[0].material.map)
     console.log(planeITex)
     const goodtexthree = this.goodplane.children[0].material.map
     console.log(goodtexthree)
     const goodTex = threeInternalTexture(goodtexthree)
-    console.log(goodTex)
-    commonCopyTexture(goodTex, planeITex)
-    this.inputPlane.children[0].material.needsUpdate = true
 
+    console.log(goodTex)
+    commonCopyTexture(goodTex, planeITex, 500, 375, false)
+    this.inputPlane.children[0].material.needsUpdate = true
   }
 
   update() {
-    if (this.images && !this.processing && ((performance.now() - this.lastFrameTime) > this.minDelay * 1000)) {
+    const enoughTimeHasPassed = ((performance.now() - this.lastFrameTime) > this.minDelay * 1000);
+    if (this.images && !this.processing && enoughTimeHasPassed) {
       this.lastFrameTime = performance.now()
       this.processing = true
       this._update().then(() => {
