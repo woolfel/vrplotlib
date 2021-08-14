@@ -5,7 +5,8 @@ import { XRControllerModelFactory } from './example-webxr/XRControllerModelFacto
 
 import { imagePlane, setRendererAndTf, tfMode, threeMode } from "./common.mjs";
 
-import { Demonetvis } from "./demonetvis.mjs"
+// import { Demonetvis } from "./demonetvis.mjs"
+import { NetVis } from "./netvis.mjs";
 
 import { setWebGLContext } from "@tensorflow/tfjs-backend-webgl";
 import * as tf from "@tensorflow/tfjs";
@@ -46,7 +47,8 @@ const tempfn = async () => {
   //   world.add(object)
   //   object.position.add(new THREE.Vector3(1, 1, 1))
   // })
-  visualization = await Demonetvis.create(world)
+  visualization = await NetVis.create(world, { url: "./models/ResNet50/model.json" })
+  // visualization = await NetVis.create(world, { url: "https://tfhub.dev/google/tfjs-model/imagenet/inception_v2/feature_vector/3/default/1" })
   animate();
 }
 tempfn()
@@ -73,7 +75,7 @@ async function init() {
   scene.background = new THREE.Color(0x808080);
 
   // this is flatscreen camera - xr makes camera with different settings
-  camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.07, 100);
+  camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.07, 300);
   camera.position.set(0, 1.6, 3);
 
   controls = new OrbitControls(camera, container);

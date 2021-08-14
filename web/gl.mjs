@@ -2,17 +2,16 @@ import * as twgl from "twgl.js";
 let programInfo, bufferInfo;
 export function copyTexture(gl, input, output, width, height) {
   const format = gl.RGB32F;
-  console.log(input, output)
+  // console.log(input, output)
   const stime = performance.now()
-  gl.bindTexture(gl.TEXTURE_2D, input)
   const fbi = twgl.createFramebufferInfo(gl, [{ attachment: input, format: format, type: gl.FLOAT }], width, height);
-  console.log(fbi)
   twgl.bindFramebufferInfo(gl, fbi);
   gl.bindTexture(gl.TEXTURE_2D, output)
   // HACK HERE: only copying top corner because that "magically" works with tensorflow internal format
   gl.copyTexImage2D(gl.TEXTURE_2D, 0, format, 0, 0, width / 2, height / 2, 0);
   // gl.generateMipmap(gl.TEXTURE_2D)
-  console.log(`copytexture took ${performance.now() - stime}`)
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+  // console.log(`copytexture took ${performance.now() - stime}`)
 }
 
 export function copyTextureWah(gl, input, output, width, height) {

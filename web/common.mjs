@@ -72,7 +72,7 @@ export async function imgUrlToTensor(url) {
   const result = await (new Promise((resolve) => {
     img.onload = () => {
       const tensor = tf.browser.fromPixels(img, 3)
-      const shaped = tensor.transpose([2, 0, 1]).expandDims(0).mul(tf.scalar(1 / 255))
+      const shaped = tensor.expandDims(0)
       resolve(shaped)
     }
   }))
@@ -117,25 +117,29 @@ export function iTexOfPlane(plane) {
   return threeInternalTexture(plane.children[0].material.map)
 }
 
-export function showActivationAcrossPlanes(activation, planes) {
-  const shape = activation.shape
-  if (shape[1] < planes.length * 3) {
-    throw new Error(`activation ${shape[1]} has fewer channels than planes ${planes.length}`)
+export function showActivationAcrossPlanes(activation, planes, channelsLast = false) {
+  if (channelsLast) {
+    tf.tidy(() => {
+      activation = tf.squeeze(activation)
+      const shape = activation.shape
+      let activationPadded = activation
+      if (activation.shape[2] < planes.length) {
+        activationPadded = tf.concat([activation, tf.zeros([activation.shape[0], activation.shape[1], planes.length * 3 - activation.shape[2]])], 2)
+      } else if (activation.shape[2] > planes.length) {
+        activationPadded = tf.slice(activation, [0, 0, 0], [activation.shape[0], activation.shape[1], planes.length * 3])
+      }
+      const layers = tf.split(tf.transpose(activationPadded, [2, 0, 1]), planes.length, 0)
+      //.map(t => tf.concat([t, tf.ones([shape[0], shape[1], 1])], 2))
+      for (let i = 0; i < planes.length; i++) {
+        const plane = planes[i]
+        const texInternal = iTexOfPlane(plane)
+        if (!texInternal) continue;
+        const layer = layers[i]
+        const tensInternal = tensorInternalTexture(layer)
+        commonCopyTexture(tensInternal, texInternal, shape[0], shape[1])
+      }
+    })
   }
-  tf.tidy(() => {
-    const numsplits = Math.floor(shape[1] / 3)
-    console.log(numsplits)
-    const layers = tf.split(tf.squeeze(tf.mul(activation, tf.scalar(1))), numsplits, 0).map(t => tf.concat([t, tf.ones([1, shape[2], shape[3]])], 0))
-    // .map(t => tf.concat([t, tf.ones([1, shape[2], shape[3]])], 0))
-    for (let i = 0; i < planes.length; i++) {
-      const layer = layers[i]
-      console.log(layer.shape)
-      const plane = planes[i]
-      const tensInternal = tensorInternalTexture(layer)
-      const texInternal = iTexOfPlane(plane)
-      commonCopyTexture(tensInternal, texInternal, shape[2], shape[3])
-    }
-  })
 }
 
 export async function tensorTexture(tensor) { // @SWITCHY
