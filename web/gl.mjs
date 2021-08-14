@@ -1,28 +1,82 @@
 import * as twgl from "twgl.js";
 let programInfo, bufferInfo;
 export function copyTexture(gl, input, output, width, height) {
-  const format = gl.RGBA32F;
-  // const format = gl.RGBA32F;
+  const format = gl.RGB32F;
   console.log(input, output)
   const stime = performance.now()
-  // console.log(Object.getPrototypeOf(gl))
   gl.bindTexture(gl.TEXTURE_2D, input)
   const fbi = twgl.createFramebufferInfo(gl, [{ attachment: input, format: format, type: gl.FLOAT }], width, height);
   console.log(fbi)
   twgl.bindFramebufferInfo(gl, fbi);
-  // gl.framebufferTexture2D(
-  //   gl.FRAMEBUFFER,
-  //   gl.COLOR_ATTACHMENT0, // attach texture as COLOR_ATTACHMENT0
-  //   gl.TEXTURE_2D,        // attach a 2D texture
-  //   input,                // the texture to attach
-  //   0);
   gl.bindTexture(gl.TEXTURE_2D, output)
-  gl.copyTexImage2D(gl.TEXTURE_2D, 0, format, 0, 0, width, height, 0);
+  // HACK HERE: only copying top corner because that "magically" works with tensorflow internal format
+  gl.copyTexImage2D(gl.TEXTURE_2D, 0, format, 0, 0, width / 2, height / 2, 0);
+  // gl.generateMipmap(gl.TEXTURE_2D)
+  console.log(`copytexture took ${performance.now() - stime}`)
+}
+
+export function copyTextureWah(gl, input, output, width, height) {
+  const stime = performance.now()
+  const format = gl.RGBA32F;
+  console.log(input, output)
+  gl.bindTexture(gl.TEXTURE_2D, output)
+  const fbi = twgl.createFramebufferInfo(gl, [{ attachment: output, format: format, type: gl.FLOAT }], width, height);
+  console.log(fbi)
+  twgl.bindFramebufferInfo(gl, fbi);
+  const vs = `attribute vec2 a_position;
+
+uniform mat3 u_matrix;
+
+varying vec2 v_texCoord;
+
+void main() {
+   gl_Position = vec4(u_matrix * vec3(a_position, 1), 1);
+
+   // because we're using a unit quad we can just use
+   // the same data for our texcoords.
+   v_texCoord = a_position;  
+}`
+  const fs =
+    `precision mediump float;
+
+// our texture
+uniform sampler2D u_image;
+
+// the texCoords passed in from the vertex shader.
+varying vec2 v_texCoord;
+
+void main() {
+   gl_FragColor = texture2D(u_image, v_texCoord);
+}
+  `
+  const programInfo = twgl.createProgramInfo(gl, [fs, vs])
+
+  const bufferInfo = twgl.createBufferInfoFromArrays(gl, {
+    position: {
+      numComponents: 3, data: [
+        0, 0, 0,
+        1, 0, 0,
+        0, 1, 0,
+        1, 1, 0],
+    },
+    texcoord: { numComponents: 2, data: [0, 0, 0, 1, 1, 0, 1, 1], },
+  })
+  twgl.setBuffersAndAttributes(gl, programInfo, bufferInfo)
+  gl.bindTexture(gl.TEXTURE_2D, input)
+  const uniforms = {
+    inputTexture: input,
+    outputResolution: [width, height],
+  }
+  twgl.setUniforms(programInfo, uniforms)
+
+  gl.drawBufferInfo(gl, bufferInfo)
+
+  gl.bindTexture(gl.TEXTURE_2D, output)
   gl.generateMipmap(gl.TEXTURE_2D)
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null)
   // undo gl state changes
   // gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
-  console.log(`copytexture took ${performance.now() - stime}`)
 }
   // const buf = gl.createBuffer();
   // gl.bindBuffer(gl.ARRAY_BUFFER, buf);

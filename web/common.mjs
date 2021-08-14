@@ -6,6 +6,7 @@ import { copyTexture } from "./gl.mjs";
 // console.log(getDenseTexShape)
 // import { bindVertexProgramAttributeStreams } from "./node_moduls/@tensorflow/tfjs-backend-webgl/src/gpgpu_util";
 let gl, renderer, whichState, tfGlState, threeGlState;
+let tex_util, webgl_util, gpgpu_util;
 let backend, gpgpu;
 let playModesSafe = true;
 
@@ -20,6 +21,12 @@ export function setRendererAndTf(the_renderer) {
   backend = tf.backend()
   gpgpu = backend.gpgpu
   console.log(gpgpu)
+  if (!backend.tex_util) {
+    console.error("NO CUSTOM WEBGL BACKEND")
+  }
+  tex_util = backend.tex_util
+  gpgpu_util = backend.gpgpu_util
+  webgl_util = backend.webgl_util
 }
 
 export function glMode() {
@@ -72,10 +79,6 @@ export async function imgUrlToTensor(url) {
   return result
 }
 
-export function forceTexInit() {
-
-}
-
 export function dispose(tensor) {
   backend.disposeData(tensor.dataId)
 }
@@ -115,18 +118,22 @@ export function iTexOfPlane(plane) {
 }
 
 export function showActivationAcrossPlanes(activation, planes) {
-  if (activation.shape[1] < planes.length * 3) {
-    throw new Error(`activation ${activation.shape[1]} has fewer channels than planes ${planes.length}`)
+  const shape = activation.shape
+  if (shape[1] < planes.length * 3) {
+    throw new Error(`activation ${shape[1]} has fewer channels than planes ${planes.length}`)
   }
   tf.tidy(() => {
-    const numsplits = Math.floor(activation.shape[1] / 3)
+    const numsplits = Math.floor(shape[1] / 3)
     console.log(numsplits)
-    const layers = tf.split(tf.squeeze(tf.mul(activation, tf.scalar(255))), numsplits, 0)
+    const layers = tf.split(tf.squeeze(tf.mul(activation, tf.scalar(1))), numsplits, 0).map(t => tf.concat([t, tf.ones([1, shape[2], shape[3]])], 0))
+    // .map(t => tf.concat([t, tf.ones([1, shape[2], shape[3]])], 0))
     for (let i = 0; i < planes.length; i++) {
+      const layer = layers[i]
+      console.log(layer.shape)
       const plane = planes[i]
-      const tensInternal = decodedInternalTexture(layers[i])
+      const tensInternal = tensorInternalTexture(layer)
       const texInternal = iTexOfPlane(plane)
-      commonCopyTexture(tensInternal, texInternal, activation.shape[2], activation.shape[3])
+      commonCopyTexture(tensInternal, texInternal, shape[2], shape[3])
     }
   })
 }
