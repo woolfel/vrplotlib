@@ -1,8 +1,3 @@
-/web/three.js/**
-web/three.js
-web/models/**
-web/imagenet/**
-web/.cache/**
-
-/web/node_modules/**
-/fractal-plants/**
+/node_modules/**
+/imagenet/**
+/models/**

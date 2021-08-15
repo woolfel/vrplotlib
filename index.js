@@ -1,3 +1,4 @@
+import * as twgl from "twgl.js";
 import * as THREE from 'three';
 import { OrbitControls } from './OrbitControls.js';
 import { VRButton } from './VRAuto.js';
@@ -10,12 +11,11 @@ import { NetVis } from "./netvis.mjs";
 
 import { setWebGLContext } from "@tensorflow/tfjs-backend-webgl";
 import * as tf from "@tensorflow/tfjs";
-
 let enableVRImmediately = false;
 
 let visualization;
 
-let container;
+let container, canvas;
 let camera, scene, renderer;
 let controllerLeft, controllerRight;
 let controllerGripLeft, controllerGripRight;
@@ -47,7 +47,7 @@ const tempfn = async () => {
   //   world.add(object)
   //   object.position.add(new THREE.Vector3(1, 1, 1))
   // })
-  visualization = await NetVis.create(world, { url: "./models/ResNet50/model.json" })
+  visualization = await NetVis.create(world, canvas, { url: "./models/ResNet50/model.json" })
   // visualization = await NetVis.create(world, { url: "https://tfhub.dev/google/tfjs-model/imagenet/inception_v2/feature_vector/3/default/1" })
   animate();
 }
@@ -82,8 +82,8 @@ async function init() {
   controls.target.set(0, 1.6, 0);
   controls.update();
 
-  const haveFloor = false
-  if (haveFloor) {
+  const useFloor = false
+  if (useFloor) {
     const floorGeometry = new THREE.PlaneGeometry(16, 16);
     const floorMaterial = new THREE.MeshStandardMaterial({
       color: 0xeeeeee,
@@ -116,6 +116,7 @@ async function init() {
   renderer.shadowMap.enabled = true;
   renderer.xr.enabled = true;
   container.appendChild(renderer.domElement);
+  canvas = renderer.domElement
 
   document.body.appendChild(VRButton.createButton(renderer, enableVRImmediately));
 
@@ -201,8 +202,13 @@ function readInputs() {
   const session = renderer.xr.getSession();
   if (session && session.inputSources) {  //only if we are in a webXR session
     for (const sourceXR of session.inputSources) {
-      buttons[sourceXR.handedness] = sourceXR.gamepad.buttons
-      axes[sourceXR.handedness] = sourceXR.gamepad.axes
+      console.log(sourceXR)
+      if (sourceXR.gamepad) {
+        buttons[sourceXR.handedness] = sourceXR.gamepad.buttons
+        axes[sourceXR.handedness] = sourceXR.gamepad.axes
+      } else {
+        console.error("sourceXR.gamepad not found (can't use buttons)")
+      }
     }
   }
 }
@@ -260,6 +266,7 @@ function grabMovement() {
 }
 
 function render() {
+  twgl.resizeCanvasToDisplaySize(canvas)
   threeMode()
 
   readInputs()

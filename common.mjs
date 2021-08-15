@@ -21,12 +21,12 @@ export function setRendererAndTf(the_renderer) {
   backend = tf.backend()
   gpgpu = backend.gpgpu
   console.log(gpgpu)
-  if (!backend.tex_util) {
-    console.error("NO CUSTOM WEBGL BACKEND")
+  if (backend.tex_util) {
+    console.error("CUSTOM WEBGL BACKEND")
+    tex_util = backend.tex_util
+    gpgpu_util = backend.gpgpu_util
+    webgl_util = backend.webgl_util
   }
-  tex_util = backend.tex_util
-  gpgpu_util = backend.gpgpu_util
-  webgl_util = backend.webgl_util
 }
 
 export function glMode() {
@@ -55,6 +55,14 @@ export function tfMode() {
   whichState = 'tf'
 }
 
+export function clamp(x, min, max) {
+  return Math.min(Math.max(x, min), max)
+}
+
+export function lerp(x, min, max) {
+  return min + (max - min) * x
+}
+
 export async function threeMode() {
   if (playModesSafe || whichState !== 'three') {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null)
@@ -72,7 +80,9 @@ export async function imgUrlToTensor(url) {
   const result = await (new Promise((resolve) => {
     img.onload = () => {
       const tensor = tf.browser.fromPixels(img, 3)
-      const shaped = tensor.expandDims(0)
+      const shaped = tf.reverse(imagenetPreprocess(tf.mul(tensor.expandDims(0), 1 / 255)), -1)
+      // const shaped = tf.reverse(tf.add(tf.mul(tensor.expandDims(0), 1 / 127.5), -1), -1)
+      shaped.data().then(console.log)
       resolve(shaped)
     }
   }))
@@ -120,7 +130,7 @@ export function iTexOfPlane(plane) {
 export function showActivationAcrossPlanes(activation, planes, channelsLast = false) {
   if (channelsLast) {
     tf.tidy(() => {
-      activation = tf.squeeze(activation)
+      activation = tf.mul(tf.squeeze(activation), 0.5)
       const shape = activation.shape
       let activationPadded = activation
       if (activation.shape[2] < planes.length) {
@@ -169,6 +179,19 @@ export function arrayTexture(arr, width, height) {
   return new THREE.DataTexture(array, width, height, RGBAFormat);
 }
 
+// models are imported from tf.keras.applications
+// preprocessing from https://github.com/keras-team/keras/blob/master/keras/applications/imagenet_utils.py
+export function imagenetPreprocess(tensor) {
+  return normalizeImage(tensor, [0.485, 0.456, 0.406],
+    [0.229, 0.224, 0.225])
+}
+
+function normalizeImage(tensor, means, stds) {
+  const subtensor = tf.tensor([[[means]]])
+  const divtensor = tf.tensor([[[stds]]])
+  return tf.div(tf.sub(tensor, subtensor), divtensor)
+}
+
 export async function tensorImagePlane(tensor, opacity = 1) {
   const texture = await tensorTexture(tensor)
   const plane = doubleSidedPlane(texture, opacity)
@@ -180,6 +203,7 @@ export function doubleSidedPlane(texture, opacity = 1) {
     map: texture,
     opacity,
     transparent: opacity !== 1,
+    // blending: THREE.AdditiveBlending,
   });
   // make one visible from front and one from back
   const object = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material)
