@@ -80,7 +80,7 @@ export async function imgUrlToTensor(url) {
   const result = await (new Promise((resolve) => {
     img.onload = () => {
       const tensor = tf.browser.fromPixels(img, 3)
-      const shaped = tf.reverse(imagenetPreprocess(tf.mul(tensor.expandDims(0), 1 / 255)), -1)
+      const shaped = tf.reverse(imagenetPreprocess(tensor.expandDims(0)), -1)
       // const shaped = tf.reverse(tf.add(tf.mul(tensor.expandDims(0), 1 / 127.5), -1), -1)
       shaped.data().then(console.log)
       resolve(shaped)
@@ -182,8 +182,7 @@ export function arrayTexture(arr, width, height) {
 // models are imported from tf.keras.applications
 // preprocessing from https://github.com/keras-team/keras/blob/master/keras/applications/imagenet_utils.py
 export function imagenetPreprocess(tensor) {
-  return normalizeImage(tensor, [0.485, 0.456, 0.406],
-    [0.229, 0.224, 0.225])
+  return tf.sub(tensor, 95)
 }
 
 function normalizeImage(tensor, means, stds) {
@@ -269,4 +268,9 @@ function bindVertexProgramAttributeStreams(
   return success &&
     bindVertexBufferToProgramAttribute(
       gl, program, 'uv', vertexBuffer, 2, stride, uvOffset);
+}
+
+export function actStats(activation) {
+  const { mean, variance } = tf.moments(activation)
+  return { mean: mean.dataSync()[0], variance: variance.dataSync()[0] }
 }

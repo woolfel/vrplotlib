@@ -161,6 +161,7 @@ export class NetVis {
       oldPlane.children[0].material.opacity = this.transparency
     }
     const oldPos = oldGroup[0].position.z
+    const oldPlane = this.activationPlaneGroups[this.selectedActivationIndex][this.selectedPlaneIndex]
 
     this.selectedActivationIndex = Math.min(Math.max(ai, 0), this.activationPlaneGroups.length - 1)
     const newGroup = this.activationPlaneGroups[this.selectedActivationIndex]
@@ -189,6 +190,10 @@ export class NetVis {
         showActivationAcrossPlanes(tf.mul(activation, 2), planes, this.channelsLast)
       }
     })
+    // layer 0 supposed tpo be mean 0.6 variance 10,000
+    console.log("moments", common.actStats(this.activationTensors[0]))
+    console.log("moments", common.actStats(this.activationTensors[10]))
+    console.log("moments", common.actStats(this.activationTensors[20]))
     // this.activationTensors[0].data().then(x => console.log("activation 1", x))
     // this.activationTensors[10].data().then(x => console.log("activation 10", x))
   }
