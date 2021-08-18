@@ -3,7 +3,6 @@ import * as tf from "@tensorflow/tfjs";
 import { copyTexture } from "./gl.mjs";
 
 // import { getDenseTexShape } from "@tensorflow/tfjs-backend-webgl/src/tex_util"
-// console.log(getDenseTexShape)
 // import { bindVertexProgramAttributeStreams } from "./node_moduls/@tensorflow/tfjs-backend-webgl/src/gpgpu_util";
 let gl, renderer, whichState, tfGlState, threeGlState;
 let tex_util, webgl_util, gpgpu_util;
@@ -80,9 +79,8 @@ export async function imgUrlToTensor(url) {
   const result = await (new Promise((resolve) => {
     img.onload = () => {
       const tensor = tf.browser.fromPixels(img, 3)
-      const shaped = tf.reverse(imagenetPreprocess(tensor.expandDims(0)), -1)
+      const shaped = imagenetPreprocess(tensor.expandDims(0))
       // const shaped = tf.reverse(tf.add(tf.mul(tensor.expandDims(0), 1 / 127.5), -1), -1)
-      shaped.data().then(console.log)
       resolve(shaped)
     }
   }))
@@ -127,51 +125,71 @@ export function iTexOfPlane(plane) {
   return threeInternalTexture(plane.children[0].material.map)
 }
 
-export function showActivationAcrossPlanes(activation, planes, channelsLast = false) {
+export function showActivationAcrossPlanes(activation, planes, channelsLast = false, rgb = false) {
   if (channelsLast) {
     tf.tidy(() => {
       activation = tf.mul(tf.squeeze(activation), 0.5)
       const shape = activation.shape
-      let activationPadded = activation
-      if (activation.shape[2] < planes.length) {
-        activationPadded = tf.concat([activation, tf.zeros([activation.shape[0], activation.shape[1], planes.length * 3 - activation.shape[2]])], 2)
-      } else if (activation.shape[2] > planes.length) {
-        activationPadded = tf.slice(activation, [0, 0, 0], [activation.shape[0], activation.shape[1], planes.length * 3])
-      }
-      const layers = tf.split(tf.transpose(activationPadded, [2, 0, 1]), planes.length, 0)
-      //.map(t => tf.concat([t, tf.ones([shape[0], shape[1], 1])], 2))
-      for (let i = 0; i < planes.length; i++) {
-        const plane = planes[i]
-        const texInternal = iTexOfPlane(plane)
-        if (!texInternal) continue;
-        const layer = layers[i]
-        const tensInternal = tensorInternalTexture(layer)
-        commonCopyTexture(tensInternal, texInternal, shape[0], shape[1])
+      if (rgb) {
+        let activationPadded = activation
+        if (activation.shape[2] < planes.length) {
+          activationPadded = tf.concat([activation, tf.zeros([activation.shape[0], activation.shape[1], planes.length * 3 - activation.shape[2]])], 2)
+        } else if (activation.shape[2] > planes.length) {
+          activationPadded = tf.slice(activation, [0, 0, 0], [activation.shape[0], activation.shape[1], planes.length * 3])
+        }
+        const layers = tf.split(tf.transpose(activationPadded, [2, 0, 1]), planes.length, 0)
+        //.map(t => tf.concat([t, tf.ones([shape[0], shape[1], 1])], 2))
+        for (let i = 0; i < planes.length; i++) {
+          const plane = planes[i]
+          const texInternal = iTexOfPlane(plane)
+          if (!texInternal) continue;
+          const layer = layers[i]
+          decodeTensor(layer)
+          console.log("copying rgb")
+          // const colors = tf.split(layer, 3, 0)
+          console.log(layer.shape)
+          let layerExpanded = tf.depthToSpace(tf.expandDims(tf.pad(layer, [[0, 1], [0, 0], [0, 0]], 255)), 2, 'NCHW')
+          console.log(layerExpanded.shape)
+          console.log("printing rgb")
+          const tensInternal = tensorInternalTexture(layerExpanded)
+          commonCopyTexture(tensInternal, texInternal, shape[0] * 2, shape[1] * 2, true)
+        }
+      } else {
+        const layers = tf.split(tf.transpose(tf.slice(activation, [0, 0, 0], [activation.shape[0], activation.shape[1], planes.length]), [2, 0, 1]), planes.length, 0)
+        for (let i = 0; i < planes.length; i++) {
+          const plane = planes[i]
+          const texInternal = iTexOfPlane(plane)
+          if (!texInternal) continue;
+          const layer = layers[i]
+          let layerExpanded = tf.depthToSpace(tf.expandDims(tf.tile(layer, [4, 1, 1]), 0), 2, 'NCHW')
+          // decodeTensor(layerExpanded)
+          const tensInternal = tensorInternalTexture(layerExpanded)
+          // console.log(layerExpanded.shape)
+          commonCopyTexture(tensInternal, texInternal, shape[0], shape[1])
+        }
       }
     })
   }
 }
 
-export async function tensorTexture(tensor) { // @SWITCHY
-  if (tensor.shape.length !== 4 && tensor.shape.length !== 3) {
-    throw new Error(`image tensor needs 4 or 2 dims`)
+export function tensorTexture(tensor, useInt = false) { // @SWITCHY
+  if (tensor.shape.length !== 3) {
+    throw new Error(`image tensor needs to have 3 dims, is shape ${JSON.stringify(tensor.shape)}`)
   }
+  const textureFormat = [null, THREE.LuminanceFormat, null, THREE.RGBFormat, THREE.RGBAFormat][tensor.shape[tensor.shape.length - 1]]
+  // console.log(tensor.shape[tensor.shape.length - 1], textureFormat)
   let texture;
   tfMode()
-  if (tensor.shape.length === 3) {
-    const array = tf.transpose(tensor, [1, 2, 0]).dataSync()
-    threeMode()
-    const hasA = tensor.shape[0] === 4
-    texture = new THREE.DataTexture(array, tensor.shape[1], tensor.shape[2], hasA ? THREE.RGBAFormat : THREE.RGBFormat, THREE.FloatType);
-    texture.generateMipmaps = false;
-    tfMode()
+  let array = tf.transpose(imagenetUnPreprocess(tensor), [2, 0, 1]).dataSync()
+  if (useInt) array = new Uint8Array(array)
+  threeMode()
+  if (useInt) {
+    texture = new THREE.DataTexture(array, tensor.shape[0], tensor.shape[1], textureFormat);
   } else {
-    const array = tf.transpose(tf.squeeze(tensor), [1, 2, 0]).dataSync()
-    threeMode()
-    const hasA = tensor.shape[1] === 4
-    texture = new THREE.DataTexture(array, tensor.shape[2], tensor.shape[3], hasA ? THREE.RGBAFormat : THREE.RGBFormat, THREE.FloatType);
-    tfMode()
+    texture = new THREE.DataTexture(array, tensor.shape[0], tensor.shape[1], textureFormat, THREE.FloatType);
   }
+  texture.generateMipmaps = false;
+  tfMode()
   return texture
 }
 
@@ -182,7 +200,11 @@ export function arrayTexture(arr, width, height) {
 // models are imported from tf.keras.applications
 // preprocessing from https://github.com/keras-team/keras/blob/master/keras/applications/imagenet_utils.py
 export function imagenetPreprocess(tensor) {
-  return tf.sub(tensor, 95)
+  return tf.reverse(tf.sub(tensor, 95), -1)
+}
+
+export function imagenetUnPreprocess(tensor) {
+  return tf.reverse(tf.add(tensor, 95), -1)
 }
 
 function normalizeImage(tensor, means, stds) {
@@ -192,7 +214,7 @@ function normalizeImage(tensor, means, stds) {
 }
 
 export async function tensorImagePlane(tensor, opacity = 1) {
-  const texture = await tensorTexture(tensor)
+  const texture = tensorTexture(tensor)
   const plane = doubleSidedPlane(texture, opacity)
   return plane
 }
@@ -201,6 +223,7 @@ export function doubleSidedPlane(texture, opacity = 1) {
   const material = new THREE.MeshBasicMaterial({
     map: texture,
     opacity,
+    // color: 0x00ff00,
     transparent: opacity !== 1,
     // blending: THREE.AdditiveBlending,
   });

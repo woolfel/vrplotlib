@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { tensorImagePlane, imgUrlToTensor, tfMode, threeMode, imagePlane, commonCopyTexture, threeInternalTexture, showActivationAcrossPlanes } from "./common.mjs";
+import { tensorImagePlane, imgUrlToTensor, tensorTexture, tfMode, threeMode, imagePlane, commonCopyTexture, threeInternalTexture, showActivationAcrossPlanes } from "./common.mjs";
 import * as common from "./common.mjs";
 import * as tf from "@tensorflow/tfjs";
 import * as mobilenet from "@tensorflow-models/mobilenet"
@@ -37,7 +37,7 @@ export class NetVis {
     thiss.widthScale = 1 / 50
     thiss.inputShape = model.feedInputShapes[0]
     thiss.inputShape[0] = 1
-    thiss.inputPlane = await tensorImagePlane(tf.zeros(thiss.inputShape))
+    thiss.inputPlane = await tensorImagePlane(tf.squeeze(tf.zeros(thiss.inputShape)), true)
     thiss.inputPlane.scale.x = thiss.inputShape[1] * thiss.widthScale
     thiss.inputPlane.scale.y = thiss.inputShape[1] * thiss.widthScale
     thiss.inputPlane.scale.z = thiss.inputShape[1] * thiss.widthScale
@@ -50,7 +50,7 @@ export class NetVis {
       const planes = []
       const activationGroup = new THREE.Group()
       thiss.group.add(activationGroup)
-      const planeShape = thiss.channelsLast ? [actShape[1], actShape[2], 3] : [3, actShape[2], actShape[3]];
+      const planeShape = thiss.channelsLast ? [actShape[1], actShape[2], 1] : [1, actShape[2], actShape[3]];
       for (let i = 0; i < numPlanes; i++) {
         const plane = await tensorImagePlane(tf.zeros(planeShape), thiss.transparency)
         plane.position.z += visDepth
@@ -99,61 +99,6 @@ export class NetVis {
 
   }
 
-  setupListeners() {
-    document.addEventListener("keydown", (event) => {
-      event.preventDefault()
-      let caught = true
-      if (event.shiftKey) {
-        switch (event.key) {
-          case "ArrowRight":
-            this.group.rotation.y -= 0.05
-            break
-          case "ArrowLeft":
-            this.group.rotation.y += 0.05
-            break
-        }
-      } else if (event.ctrlKey) {
-        switch (event.key) {
-          case "ArrowRight":
-            this.translateSelectedPixel(1, 0)
-            break;
-          case "ArrowLeft":
-            this.translateSelectedPixel(-1, 0)
-            break;
-          case "ArrowUp":
-            this.translateSelectedPixel(0, 1)
-            break;
-          case "ArrowDown":
-            this.translateSelectedPixel(0, -1)
-            break;
-          default:
-            caught = false;
-        }
-      } else {
-
-        switch (event.key) {
-          case "ArrowRight":
-            this.setSelected(this.selectedActivationIndex, this.selectedPlaneIndex + 1)
-            break;
-          case "ArrowLeft":
-            this.setSelected(this.selectedActivationIndex, this.selectedPlaneIndex - 1)
-            break;
-          case "ArrowUp":
-            this.setSelected(this.selectedActivationIndex + 1, this.selectedPlaneIndex)
-            break;
-          case "ArrowDown":
-            this.setSelected(this.selectedActivationIndex - 1, this.selectedPlaneIndex)
-            break;
-          default:
-            caught = false;
-        }
-      }
-      if (caught) {
-        event.preventDefault()
-      }
-    })
-  }
-
   setSelected(ai, pi) {
     const oldGroup = this.activationPlaneGroups[this.selectedActivationIndex]
     for (let i = 0; i < oldGroup.length; i++) {
@@ -183,7 +128,7 @@ export class NetVis {
 
   async display() {
     tf.tidy(() => {
-      showActivationAcrossPlanes(this.inputTensor, [this.inputPlane], this.channelsLast)
+      showActivationAcrossPlanes(this.inputTensor, [this.inputPlane], this.channelsLast, true)
       for (let i = 0; i < this.activationTensors.length; i++) {
         const activation = this.activationTensors[i]
         const planes = this.activationPlaneGroups[i]
@@ -191,9 +136,6 @@ export class NetVis {
       }
     })
     // layer 0 supposed tpo be mean 0.6 variance 10,000
-    console.log("moments", common.actStats(this.activationTensors[0]))
-    console.log("moments", common.actStats(this.activationTensors[10]))
-    console.log("moments", common.actStats(this.activationTensors[20]))
     // this.activationTensors[0].data().then(x => console.log("activation 1", x))
     // this.activationTensors[10].data().then(x => console.log("activation 10", x))
   }
@@ -205,17 +147,14 @@ export class NetVis {
     this.activationTensors = this.model.predict(this.inputTensor)
     this.probs = this.activationTensors.pop()
     this.probs.data().then((data) => {
-      console.log(data)
       const zipped = Array.from(data).map((x, i) => {
         return [x, i]
       })
       zipped.sort((a, b) => b[0] - a[0])
-      console.log(zipped)
       for (let i = 0; i < 1; i++) {
         console.log(imagenetLabels[zipped[i][1]])
       }
     })
-    console.log(this.probs)
     console.log(`predict took ${performance.now() - pstime}`)
     await this.display()
   }
@@ -229,5 +168,60 @@ export class NetVis {
         this.updating = false
       })
     }
+  }
+
+  setupListeners() {
+    document.addEventListener("keydown", (event) => {
+      let caught = true
+      if (event.shiftKey) {
+        switch (event.key) {
+          case "ArrowRight":
+            this.group.rotation.y -= 0.05
+            break
+          case "ArrowLeft":
+            this.group.rotation.y += 0.05
+            break
+          default:
+            caught = false;
+        }
+      } else if (event.ctrlKey) {
+        switch (event.key) {
+          case "ArrowRight":
+            this.translateSelectedPixel(1, 0)
+            break;
+          case "ArrowLeft":
+            this.translateSelectedPixel(-1, 0)
+            break;
+          case "ArrowUp":
+            this.translateSelectedPixel(0, 1)
+            break;
+          case "ArrowDown":
+            this.translateSelectedPixel(0, -1)
+            break;
+          default:
+            caught = false;
+        }
+      } else {
+        switch (event.key) {
+          case "ArrowRight":
+            this.setSelected(this.selectedActivationIndex, this.selectedPlaneIndex + 1)
+            break;
+          case "ArrowLeft":
+            this.setSelected(this.selectedActivationIndex, this.selectedPlaneIndex - 1)
+            break;
+          case "ArrowUp":
+            this.setSelected(this.selectedActivationIndex - 1, this.selectedPlaneIndex)
+            break;
+          case "ArrowDown":
+            this.setSelected(this.selectedActivationIndex + 1, this.selectedPlaneIndex)
+            break;
+          default:
+            caught = false;
+        }
+      }
+      if (caught) {
+        event.preventDefault()
+      }
+    })
   }
 }
