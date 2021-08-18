@@ -5,10 +5,9 @@ plotting in VR, mostly around neural networks
 
 The application is built on ReactJS. You will need to install
 
-1. nodejs
-2. reactjs
-3. clone the repo
-4. run "npm install"
+1. nodejs - https://nodejs.org/en/download/
+2. clone the repo
+3. run "npm install"
 
 ## Running it
 
