@@ -107,7 +107,7 @@ export class Demonetvis {
       await this.display2d(tensors[2])
     }
 
-    // commonCopyTexture( decodedInternalTexture(tensors[0]), threeInternalTexture(this.inputPlane.children[0].material.map))
+    // commonCopyTexture( decodedInternalTexture(tensors[0]), threeInternalTexture(this.inputPlane.material.map))
 
 
     // console.log(tensors[1])
@@ -116,7 +116,7 @@ export class Demonetvis {
     // console.log(decodedTensor)
     // const tensorTexture = tensorInternalTexture(decodedTensor)
     // console.log(tensorTexture)
-    // const planeTexture = threeInternalTexture(this.activationPlane1.children[0].material.map)
+    // const planeTexture = threeInternalTexture(this.activationPlane1.material.map)
     // console.log(planeTexture)
     // commonCopyTexture(tensorTexture, planeTexture, 224, 224)
     // dispose(decodedTensor)
@@ -126,7 +126,7 @@ export class Demonetvis {
 
 
     // dispose(tensors[0])
-    // commonCopyTexture(decodedInternalTexture(tensors[2]), threeInternalTexture(this.activationPlane2.children[0].material.map))
+    // commonCopyTexture(decodedInternalTexture(tensors[2]), threeInternalTexture(this.activationPlane2.material.map))
     // this.inputPlane.children[0].material.needsUpdate = true
     // this.activationPlane1.children[0].material.needsUpdate = true
     // this.activationPlane2.children[0].material.needsUpdate = true

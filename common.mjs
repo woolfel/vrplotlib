@@ -122,7 +122,7 @@ export async function tensorTextureGl(tensor, texture) {
 }
 
 export function iTexOfPlane(plane) {
-  return threeInternalTexture(plane.children[0].material.map)
+  return threeInternalTexture(plane.material.map)
 }
 
 export function showActivationAcrossPlanes(activation, planes, channelsLast = false, rgb = false) {
@@ -170,6 +170,30 @@ export function showActivationAcrossPlanes(activation, planes, channelsLast = fa
       }
     })
   }
+}
+
+export function threeTfTextureShaderMaterial(tensor) {
+  const glTex = decodedInternalTexture(tensor)
+  return new THREE.ShaderMaterial({
+    uniforms: { tfTexture: { value: glTex } },
+    vertexShader: `
+    attribute vec2 uv;
+		varying vec2 vUv;
+			void main() {
+        vUv = uv;
+				gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+
+			}`,
+    fragmentShader: `
+    
+    uniform sampler2D tfTexture;
+      varying vec2 vUv;
+			void main() {
+
+				gl_FragColor = texture2D(tfTexture, vUv);
+
+			}`,
+  })
 }
 
 export function tensorTexture(tensor, useInt = false) { // @SWITCHY
@@ -223,21 +247,15 @@ export function doubleSidedPlane(texture, opacity = 1) {
   const material = new THREE.MeshBasicMaterial({
     map: texture,
     opacity,
+    side: THREE.DoubleSide,
     // color: 0x00ff00,
     transparent: opacity !== 1,
     // blending: THREE.AdditiveBlending,
   });
   // make one visible from front and one from back
-  const object = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material)
   const object2 = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material)
-  object2.rotation.z += Math.PI
-  object.rotation.z += Math.PI
-  object2.scale.x = -1
-  const group = new THREE.Group()
-  group.add(object)
-  group.add(object2)
   object2.rotateY(Math.PI)
-  return group
+  return object2
 }
 
 export function imagePlane(url, callback) {
